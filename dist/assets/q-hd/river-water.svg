@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 72" fill="none">
+<defs>
+ <linearGradient id="ripple" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fffdf7"/><stop offset=".38" stop-color="#f8efdf"/><stop offset=".78" stop-color="#d7c1a1"/><stop offset="1" stop-color="#f6ecdc"/></linearGradient>
+ <filter id="shadow" x="-10%" y="-80%" width="125%" height="280%" color-interpolation-filters="sRGB"><feDropShadow dx=".3" dy="1.1" stdDeviation=".85" flood-color="#9e8762" flood-opacity=".28"/></filter>
+</defs>
+<g fill="url(#ripple)" filter="url(#shadow)">
+ <path d="M87 21C97 18 102 14 111 16C120 18 126 22 135 21C126 25 119 22 111 21C102 20 96 23 87 21Z"/>
+ <path d="M15 33C31 33 42 21 59 21C77 21 87 32 103 31C120 31 129 22 145 25C154 26 161 30 169 32C151 30 148 29 141 29C128 29 118 37 102 36C84 35 74 26 59 26C43 26 32 38 15 33Z"/>
+ <path d="M32 43C46 43 54 34 67 34C82 34 91 44 106 43C121 43 133 36 145 37C153 37 161 39 168 42C155 41 152 41 145 41C132 42 121 49 106 49C89 49 80 40 67 39C55 39 44 47 32 43Z"/>
+ <path d="M57 54C67 51 74 47 84 48C96 49 102 55 112 55C122 56 130 52 141 51C130 54 123 60 112 59C100 59 93 54 84 53C74 52 68 55 57 54Z"/>
+</g>
+</svg>

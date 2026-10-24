@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 180 72" fill="none">
+<defs>
+ <linearGradient id="ivory" x1="34" y1="18" x2="118" y2="64" gradientUnits="userSpaceOnUse"><stop stop-color="#fffdf8"/><stop offset=".36" stop-color="#f7eee0"/><stop offset=".66" stop-color="#dcc9ac"/><stop offset="1" stop-color="#f7eee0"/></linearGradient>
+ <linearGradient id="peak" x1="65" y1="23" x2="101" y2="53" gradientUnits="userSpaceOnUse"><stop stop-color="#fffaf0"/><stop offset=".43" stop-color="#eee1ce"/><stop offset=".8" stop-color="#d3bfa0"/><stop offset="1" stop-color="#f4e8d6"/></linearGradient>
+ <linearGradient id="front" x1="79" y1="45" x2="83" y2="61" gradientUnits="userSpaceOnUse"><stop stop-color="#fffcf5"/><stop offset=".45" stop-color="#f4e8d7"/><stop offset=".85" stop-color="#dfc9a7"/><stop offset="1" stop-color="#f8efe1"/></linearGradient>
+ <filter id="shadow" x="-15%" y="-30%" width="140%" height="170%" color-interpolation-filters="sRGB"><feDropShadow dx=".5" dy="1.4" stdDeviation="1.2" flood-color="#a48b66" flood-opacity=".3"/></filter>
+</defs>
+<g filter="url(#shadow)">
+ <path d="M13 56C27 54 35 48 42 35C45 29 48 24 52 27C59 31 62 45 75 52C62 58 46 59 31 57C24 57 18 57 13 56Z" fill="url(#ivory)"/>
+ <path d="M103 51C113 46 116 36 121 34C128 31 131 41 141 48C149 53 158 55 168 56C150 59 132 58 118 55Z" fill="url(#ivory)"/>
+ <path d="M36 58C50 54 61 41 71 22C77 10 80 6 85 9C90 12 94 24 103 38C113 53 130 57 148 59C123 61 103 59 86 57C66 62 49 60 36 58Z" fill="url(#peak)"/>
+ <path d="M40 57C55 52 66 38 75 20C79 12 81 9 84 9C78 19 77 32 70 43C62 52 51 56 40 57Z" fill="#fffaf0" fill-opacity=".57"/>
+ <path d="M57 61C69 57 75 51 82 48C89 45 95 51 105 56C113 60 123 62 133 62C112 65 97 60 85 60C73 61 64 63 57 61Z" fill="url(#front)"/>
+</g>
+</svg>
