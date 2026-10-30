@@ -1,5 +1,5 @@
 let pageView='home',draftMode='ai';
-const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null;let last=null;let terrainMap='riverside';try{terrainMap=['clean','vector'].includes(localStorage.getItem('jing-terrain-map'))?localStorage.getItem('jing-terrain-map'):'riverside'}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['serif','sans','playful'].includes(savedSkin)?savedSkin:'playful'}catch{};const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null;let last=null;let terrainMap='riverside';try{terrainMap=localStorage.getItem('jing-terrain-map')==='clean'?'clean':'riverside';if(localStorage.getItem('jing-terrain-map')==='vector')localStorage.setItem('jing-terrain-map','riverside')}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['regal','jade','street'].includes(savedSkin)?'mascot':['serif','sans','playful','mascot','benteng'].includes(savedSkin)?savedSkin:'playful';if(['regal','jade','street'].includes(savedSkin))localStorage.setItem('jing-xiangqi-skin','mascot')}catch{};const NS='http://www.w3.org/2000/svg';
 function node(tag,attrs={},parent=$('board')){let n=document.createElementNS(NS,tag);for(let k in attrs)n.setAttribute(k,attrs[k]);parent.append(n);return n;}function text(content,attrs,parent){let n=node('text',attrs,parent);n.textContent=content;return n;}
 function pos(x,y){return flipped?[504-x*56,564-y*56]:[56+x*56,60+y*56];}
 function glyph(parent,char,color,stroke){let v=PIECE_GLYPHS[skin][char],[x0,y0,x1,y1]=v.box;let scale=Math.min(28/(x1-x0),30/(y1-y0));let group=node('g',{transform:`translate(${-(x0+x1)/2*scale} ${(y0+y1)/2*scale}) scale(${scale} ${-scale})`,'aria-hidden':'true'},parent);node('path',{d:v.d,fill:color,...(stroke?{stroke,'stroke-width':.42,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'}:{})},group);}
@@ -24,6 +24,28 @@ function artwork(parent,p){
 }
 
 
+
+// H1 疏朗: six unchanged reference pieces and independent high-detail role pairs.
+function sansArtwork(parent,p){
+ const tile=referenceTiles[p];
+ if(tile){
+  const [col,row]=tile,cx=[228,626,1024][col],cy=row?842:421;
+  const id='sans-art-'+(++sansArtwork.id);
+  const v=node('svg',{x:-28,y:-29,width:56,height:59,viewBox:`${cx-190} ${cy-195} 380 400`,style:'width:56px;height:59px;overflow:hidden','pointer-events':'none','aria-hidden':'true'},parent);
+  const clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},node('defs',{},v));
+  node('ellipse',{cx,cy,rx:186,ry:189},clip);
+  node('image',{href:'./assets/sans-h1/reference.png',width:1254,height:1254,'clip-path':`url(#${id})`},v);
+ }else{
+  const source={a:{r:[471,438,342,344],b:[1295,438,343,344]},e:{r:[482,438,346,349],b:[1282,438,350,350]},c:{r:[463,429,359,368],b:[1305,429,365,369]},p:{r:[480,434,343,352],b:[1293,434,347,352]}}[p[1]][p[0]];
+  const [cx,cy,rx,ry]=source,id='sans-art-'+(++sansArtwork.id);
+  const v=node('svg',{x:-28,y:-29,width:56,height:59,viewBox:`${cx-rx-3} ${cy-ry-3} ${2*rx+6} ${2*ry+6}`,preserveAspectRatio:'none',style:'width:56px;height:59px;overflow:hidden','pointer-events':'none','aria-hidden':'true'},parent);
+  const clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},node('defs',{},v));
+  node('ellipse',{cx,cy,rx,ry},clip);
+  node('image',{href:`./assets/sans-h1/${p[1]}.png`,width:1774,height:887,'clip-path':`url(#${id})`},v);
+ }
+}
+sansArtwork.id=0;
+
 // Independent high-detail source pairs. Coordinates isolate each entire disk.
 const playfulNames={k:'General',a:'Advisor',e:'Elephant',h:'Horse',r:'Chariot',c:'Cannon',p:'Soldier'};
 const playfulSources={
@@ -43,14 +65,45 @@ function playfulArt(parent,p,size=52){
  node('image',{href:`./assets/q-hd/${type==='k'?'k-unarmed-v3':type}.png`,width:1774,height:887,'clip-path':`url(#${id})`,'pointer-events':'none'},v);
 }
 playfulArt.id=0;
+// Brand collection: all fourteen illustrated emblems share one high-resolution atlas.
+const illustratedSkins={
+ benteng:{name:'奔腾入阵',note:'汉风 · 漫画',river:'奔 腾 入 阵',line:'妙 棋 手 · 棋 逢 趣 手',red:'#fff0da',black:'#e8f3ff'},
+ mascot:{name:'墨镜棋社',note:'酷趣 · 图案',river:'MIAOQI',line:'棋 逢 趣 手',red:'#fff0da',black:'#e8f3ff'},
+};
+function mascotArt(parent,p,size=51,badge=true){
+ const id='mascot-clip-'+(++mascotArt.id),refined=skin==='benteng',r=size/2;
+ const defs=node('defs',{},parent),clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},defs);
+ if(refined){
+  const gradient=node('linearGradient',{id:id+'-rim',x1:'0',y1:'0',x2:'0',y2:'1'},defs);
+  node('stop',{offset:'0%','stop-color':'#fffdf6'},gradient);
+  node('stop',{offset:'100%','stop-color':'#eadfc9'},gradient);
+  // Geometry owns the silhouette; the bitmap's uneven outer border stays hidden.
+  node('circle',{cy:1.3,r:r-.35,fill:'#2c241c',opacity:'.15','pointer-events':'none'},parent);
+  node('circle',{r:r-.65,fill:`url(#${id}-rim)`,stroke:'#292925','stroke-width':1.15,'pointer-events':'none'},parent);
+ }
+ node('circle',{cx:0,cy:0,r:refined?r-4:r},clip);
+ node('image',{href:`./assets/${skin}/${p}.png?v=benteng29`,x:-r,y:-r,width:size,height:size,'clip-path':`url(#${id})`,'pointer-events':'none',class:'mascot-art','aria-hidden':'true'},parent);
+ if(refined){
+  node('circle',{r:r-3.75,fill:'none',stroke:'#fff9eb','stroke-width':1,'pointer-events':'none'},parent);
+  node('circle',{r:r-2.8,fill:'none',stroke:p[0]==='r'?'#bb552b':'#557281','stroke-width':.7,'pointer-events':'none'},parent);
+ }
+ if(badge){
+  const x=refined?12.5:18,y=refined?14:19,br=refined?6.1:8.4;
+  node('circle',{cx:x,cy:y,r:br,fill:p[0]==='r'?illustratedSkins[skin].red:illustratedSkins[skin].black,stroke:refined?'#51443a':'#171714','stroke-width':refined?.7:1.3,'pointer-events':'none'},parent);
+  text(XQ.names[p[0]][p[1]],{x,y:y+(refined?3:3.8),'text-anchor':'middle','font-size':refined?8.6:10.5,'font-weight':700,fill:'#171714','font-family':'Microsoft YaHei, sans-serif','pointer-events':'none'},parent);
+ }
+ node('circle',{r:r+2,fill:'transparent','pointer-events':'all'},parent);
+}
+mascotArt.id=0;
 function applySkin(){
  document.body.dataset.skin=skin;
+ document.body.dataset.illustrated=String(!!illustratedSkins[skin]);
  document.body.dataset.terrain=skin==='playful'?terrainMap:'clean';
  document.querySelectorAll('[data-map]').forEach(b=>{const on=b.dataset.map===terrainMap;b.setAttribute('aria-pressed',String(on));b.classList.toggle('active',on)});
  $('board').setAttribute('viewBox',skin==='playful'?(terrainMap!=='clean'?'20 -8 520 640':'20 16 520 592'):'-12 -12 584 648');
- const name=skin==='playful'?'童趣浮雕 · Q版象棋':'凝脂白玉 · 山水相望';
+ const name=illustratedSkins[skin]?illustratedSkins[skin].name+' · 妙棋手系列':skin==='playful'?'玲珑将相':'凝脂白玉 · 山水相望';
  document.querySelectorAll('.light-label,.preview-caption').forEach(el=>el.textContent=name);
- $('captures').textContent=skin==='playful'?'小小棋子，大大天地。':'落子无悔，亦可重来。';
+ $('captures').textContent=illustratedSkins[skin]?'棋逢趣手，落子有趣。':skin==='playful'?'小小棋子，大大天地。':'落子无悔，亦可重来。';
  document.querySelector('.home-footnote').textContent='棋局自动保存，随时回来继续。';
 }
 
@@ -62,6 +115,9 @@ if(skin==='playful'&&terrainMap==='clean'){
  const motifs=node('g',{'aria-hidden':'true','pointer-events':'none',class:'river-relief'});
  node('image',{href:'./assets/q-hd/river-mountain.svg',x:126,y:289,width:100,height:40},motifs);
  node('image',{href:'./assets/q-hd/river-water.svg',x:338,y:290,width:100,height:40},motifs);
+}else if(illustratedSkins[skin]){
+ text(illustratedSkins[skin].river,{x:280,y:310,'text-anchor':'middle','font-family':'Microsoft YaHei,Arial,sans-serif','font-size':16,'font-weight':800,'letter-spacing':5,fill:'#31312a'});
+ text(illustratedSkins[skin].line,{x:280,y:329,'text-anchor':'middle','font-family':'Microsoft YaHei,sans-serif','font-size':8,fill:'#9b6840'});
 }else if(skin!=='playful'){
  const motifs=node('g',{'aria-hidden':'true',fill:'none','stroke-linecap':'round','stroke-linejoin':'round'});
  const mountain='M143 318 C152 317 157 306 163 308 C168 309 171 316 179 319 M161 312 C170 309 174 296 180 299 C186 301 190 315 195 312 C200 307 204 319 214 320';
@@ -70,13 +126,13 @@ if(skin==='playful'&&terrainMap==='clean'){
 }
 
 if(last&&pageView==='game')for(let p of [[last.x,last.y],[last.X,last.Y]]){let [x,y]=pos(...p);node('rect',{x:x-26,y:y-26,width:52,height:52,rx:10,fill:'#a3916244',stroke:'#a3916266','stroke-width':.8});}
-for(let y=0;y<10;y++)for(let x=0;x<9;x++){let p=visualBoard[y][x];if(!p)continue;let [cx,cy]=pos(x,y),sel=selected&&selected.x===x&&selected.y===y;let g=node('g',{class:'piece jade-piece',transform:`translate(${cx} ${cy})`,role:'button',tabindex:'0','aria-label':(p[0]==='r'?'红':'黑')+XQ.names[p[0]][p[1]]+` ${x+1}列${y+1}行`});if(sel)node('rect',{x:-26,y:-26,width:52,height:52,rx:11,fill:'#b6a78325',stroke:'#9a8b6b','stroke-width':1},g);if(skin==='playful'){playfulArt(g,p)}else if(skin==='serif'){artwork(g,p)}else{node('image',{href:'./assets/jade-piece.png',x:-31,y:-28.7,width:64,height:64,'pointer-events':'none'},g);let char=XQ.names[p[0]][p[1]];let highlight=node('g',{transform:'translate(.6 .8)',opacity:.95},g);glyph(highlight,char,'#fff7de','#fff7de');let letter=node('g',{},g);glyph(letter,char,p[0]==='r'?'url(#red-carving)':'url(#black-carving)',p[0]==='r'?'#76291f':'#182019');}g.onclick=e=>{e.stopPropagation();click(x,y)};g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();click(x,y)}};}
+for(let y=0;y<10;y++)for(let x=0;x<9;x++){let p=visualBoard[y][x];if(!p)continue;let [cx,cy]=pos(x,y),sel=selected&&selected.x===x&&selected.y===y;let g=node('g',{class:'piece jade-piece',transform:`translate(${cx} ${cy})`,role:'button',tabindex:'0','aria-label':(p[0]==='r'?'红':'黑')+XQ.names[p[0]][p[1]]+` ${x+1}列${y+1}行`});if(sel)node('rect',{x:-26,y:-26,width:52,height:52,rx:11,fill:'#b6a78325',stroke:'#9a8b6b','stroke-width':1},g);if(illustratedSkins[skin]){mascotArt(g,p)}else if(skin==='playful'){playfulArt(g,p)}else if(skin==='serif'){artwork(g,p)}else{sansArtwork(g,p);node('circle',{r:27,fill:'transparent','pointer-events':'all'},g)}g.onclick=e=>{e.stopPropagation();click(x,y)};g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();click(x,y)}};}
 if(selected)for(let m of legal.filter(m=>m.x===selected.x&&m.y===selected.y)){let [cx,cy]=pos(m.X,m.Y);let target=node('circle',{cx,cy,r:board[m.Y][m.X]?25:7,fill:board[m.Y][m.X]?'none':'#7c8b6a',stroke:board[m.Y][m.X]?'#9a5142':'none','stroke-width':2,'pointer-events':'all',opacity:.8,role:'button',tabindex:'0','aria-label':`落子至 ${m.X+1}列${m.Y+1}行`,style:'cursor:pointer'});target.onclick=e=>{e.stopPropagation();click(m.X,m.Y)};target.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();click(m.X,m.Y)}};}
-document.querySelectorAll('[data-skin]').forEach(btn=>{let active=btn.dataset.skin===skin;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});$('round').textContent=`第 ${String(Math.floor(history.length/2)+1).padStart(2,'0')} 回合`;$('moveCount').textContent=String(history.length).padStart(2,'0');$('history').innerHTML='';history.forEach((h,i)=>{let li=document.createElement('li');li.textContent=h.label;$('history').append(li)});$('undo').disabled=!history.length||busy;$('offerDraw').disabled=ended||busy||mode==='ai'&&turn!=='r';
+document.querySelectorAll('[data-skin],[data-game-skin]').forEach(btn=>{let active=(btn.dataset.skin||btn.dataset.gameSkin)===skin;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});$('round').textContent=`第 ${String(Math.floor(history.length/2)+1).padStart(2,'0')} 回合`;$('moveCount').textContent=String(history.length).padStart(2,'0');$('history').innerHTML='';history.forEach((h,i)=>{let li=document.createElement('li');li.textContent=h.label;$('history').append(li)});$('undo').disabled=!history.length||busy;$('offerDraw').disabled=ended||busy||mode==='ai'&&turn!=='r';
 const repeatedSide=['r','b'].find(side=>XQ.checkStreak(history,board,side)>=5);
 $('longCheckWarning').hidden=pageView!=='game'||ended||!repeatedSide;
-$('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?'山隐 · 棋友':'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));playfulArt(icon,turn+'k',50);}if(!ended){$('status').textContent=busy?'山隐正在凝思…':(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}}
-document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'端正 · 宋体',sans:'疏朗 · 黑体',playful:'童趣浮雕 · Q版象棋'}[skin]));});
+$('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));sansArtwork(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));mascotArt(icon,turn+'k',50,false);}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));playfulArt(icon,turn+'k',50);}if(!ended){$('status').textContent=busy?'山隐正在凝思…':(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}}
+document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'温玉雅宋',sans:'疏朗 · 黑体',playful:'玲珑将相',mascot:'墨镜棋社',benteng:'奔腾入阵'}[skin]));});
 $('board').onclick=e=>{let p=$('board').createSVGPoint();p.x=e.clientX;p.y=e.clientY;p=p.matrixTransform($('board').getScreenCTM().inverse());let x=Math.round((p.x-56)/56),y=Math.round((p.y-60)/56);if(flipped){x=8-x;y=9-y}if(x>=0&&x<9&&y>=0&&y<10)click(x,y)};
 function click(x,y){if(pageView!=='game'||ended||busy||mode==='ai'&&turn==='b')return;if(board[y][x]?.[0]===turn){selected=selected?.x===x&&selected?.y===y?null:{x,y};draw();return}if(selected){let m=legal.find(m=>m.x===selected.x&&m.y===selected.y&&m.X===x&&m.Y===y);if(m){move(m);computer()}else toast('此处不可落子')}}
 function audio(){if(muted)return;try{let ctx=window.audioCtx||(window.audioCtx=new (window.AudioContext||window.webkitAudioContext)());ctx.resume();let o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(680,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(210,ctx.currentTime+.1);g.gain.setValueAtTime(.12,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.14);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.15)}catch{}}
@@ -129,9 +185,37 @@ $('drawOfferDialog').addEventListener('cancel',()=>{drawOffer=null});
 $('closeLongCheck').onclick=()=>{$('longCheckDialog').close();computer()};
 $('longCheckDialog').addEventListener('close',()=>computer());
 
-function computer(){if($('longCheckDialog').open||$('drawOfferDialog').open||pageView!=='game'||busy||mode!=='ai'||turn!=='b'||ended)return;busy=true;draw();let e=epoch;setTimeout(()=>{if(e!==epoch)return;let m=XQ.ai(board,Number($('level').value));busy=false;if(m)move(m);else draw()},420)}
+let aiWorker=null;
+let aiStyle=['active','solid','flank'][Math.floor(Math.random()*3)];
+let aiRecent={};try{aiRecent=JSON.parse(localStorage.getItem('jing-ai-recent-v2'))||{};}catch{}
+function aiPositionKey(){return board.map(row=>row.map(p=>p||'..').join('')).join('');}
+function rememberAI(position,m){
+ if(!m)return;const id=`${m.x}${m.y}${m.X}${m.Y}`;
+ const recent=Array.isArray(aiRecent[position])?aiRecent[position]:[];
+ delete aiRecent[position];aiRecent[position]=[id,...recent].slice(0,3);
+ const keys=Object.keys(aiRecent);for(const key of keys.slice(0,Math.max(0,keys.length-120)))delete aiRecent[key];
+ try{localStorage.setItem('jing-ai-recent-v2',JSON.stringify(aiRecent));}catch{}
+}
+function cancelComputer(){if(aiWorker){aiWorker.terminate();aiWorker=null;}}
+function computer(){
+ if($('longCheckDialog').open||$('drawOfferDialog').open||pageView!=='game'||busy||mode!=='ai'||turn!=='b'||ended)return;
+ busy=true;draw();const e=epoch,level=Number($('level').value),position=aiPositionKey();
+ const context={style:aiStyle,recent:Array.isArray(aiRecent[position])?aiRecent[position]:[]};
+ const finish=m=>{if(e!==epoch)return;cancelComputer();busy=false;rememberAI(position,m);if(m)move(m);else draw();};
+ const fallback=()=>{cancelComputer();setTimeout(()=>{if(e!==epoch)return;finish(XQ.ai(board,Math.min(level,3),Math.random,context));},30);};
+ setTimeout(()=>{
+  if(e!==epoch)return;
+  try{
+   aiWorker=new Worker('./ai-worker.js?v=variety31');
+   aiWorker.onmessage=event=>{if(e!==epoch)return;finish(event.data.move);};
+   aiWorker.onerror=()=>{if(e===epoch)fallback();};
+   aiWorker.postMessage({board,level,context});
+  }catch{fallback();}
+ },180);
+}
+
 function save(){try{localStorage.setItem('jing-xiangqi-v1',JSON.stringify({board,turn,history,mode,flipped,last,ended,drawAgreed,level:$('level').value,status:$('status').textContent,hint:$('hint').textContent}));}catch{$('saveStatus').textContent='当前浏览器无法保存棋局'}}
-function reset(){drawAgreed=false;drawOffer=null;for(const id of ['drawOfferDialog','longCheckDialog'])if($(id).open)$(id).close();if($('resultDialog').open)$('resultDialog').close();epoch++;busy=false;board=XQ.initial();turn='r';selected=null;history=[];ended=false;last=null;legal=XQ.moves(board,turn);save();draw()}
+function reset(){aiStyle=['active','solid','flank'][Math.floor(Math.random()*3)];drawAgreed=false;drawOffer=null;for(const id of ['drawOfferDialog','longCheckDialog'])if($(id).open)$(id).close();if($('resultDialog').open)$('resultDialog').close();epoch++;cancelComputer();busy=false;board=XQ.initial();turn='r';selected=null;history=[];ended=false;last=null;legal=XQ.moves(board,turn);save();draw()}
 function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('toast').style.opacity=0,2200)}
 $('undo').onclick=()=>{if(!history.length||busy)return;epoch++;let n=mode==='ai'&&turn==='r'&&history.length>1?2:1;while(n--&&history.length){let h=history.pop();board=h.board;turn=h.turn;last=h.last;}ended=false;drawAgreed=false;selected=null;legal=XQ.moves(board,turn);save();draw();toast('棋局已退回上一步')};$('new').onclick=startNewGame;function showConfirm(fn){let d=document.createElement('dialog');d.innerHTML='<div class="eyebrow">A NEW BEGINNING</div><h2>重新开启一局？</h2><p>当前棋局将被新的棋局替换。</p><button class="primary">确认新局 ↗</button><button style="width:100%;padding:18px">继续此局</button>';document.body.append(d);let bs=d.querySelectorAll('button');bs[0].onclick=()=>{d.close();d.remove();fn()};bs[1].onclick=()=>{d.close();d.remove()};d.showModal()}
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{draftMode=b.dataset.mode;draw()});$('flip').onclick=()=>{flipped=!flipped;draw();save()};$('sound').onclick=()=>{muted=!muted;$('sound').textContent=muted?'♪　音效关':'♪　音效开';audio()};$('help').onclick=()=>$('dialog').showModal();$('close').onclick=$('understood').onclick=()=>$('dialog').close();
@@ -167,16 +251,17 @@ $('resultDialog').addEventListener('cancel',e=>{e.preventDefault();finishGame()}
 const boardSection=document.querySelector('.game');
 function navigate(view){if(location.hash==='#'+view)applyView(view);else location.hash=view}
 function applyView(view){
- pageView=view==='game'?'game':'home';
- if(pageView==='home'){
+ pageView=['game','learn'].includes(view)?view:'home';
+ if(pageView!=='game'){
   if(immersive)setImmersive(false);
-  epoch++;busy=false;selected=null;
+  epoch++;cancelComputer();busy=false;selected=null;
   if($('resultDialog').open)$('resultDialog').close();
   drawOffer=null;for(const id of ['drawOfferDialog','longCheckDialog'])if($(id).open)$(id).close();
   $('homePreview').prepend(boardSection);draftMode=mode;
  }else{$('gameStage').append(boardSection)}
  document.body.dataset.page=pageView;
  $('homePage').hidden=pageView!=='home';$('gamePage').hidden=pageView!=='game';
+ $('learnPage').hidden=pageView!=='learn';
  $('continueGame').hidden=!history.length||ended;
  $('gameMore').open=false;
  draw();window.scrollTo(0,0);
@@ -191,8 +276,15 @@ $('backHome').onclick=()=>{save();navigate('home')};
 $('restartGame').onclick=()=>{const start=()=>{reset();$('gameMore').open=false};if(history.length&&!ended)showConfirm(start);else start()};
 document.querySelectorAll('[data-game-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.gameSkin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换皮肤');});
 $('helpGame').onclick=()=>{$('gameMore').open=false;$('dialog').showModal()};
-window.addEventListener('hashchange',()=>applyView(location.hash==='#game'?'game':'home'));
-draftMode=mode;applyView(location.hash==='#game'?'game':'home');
+window.addEventListener('hashchange',()=>applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':'home'));
+draftMode=mode;applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':'home');
 
 // Board changes are purely visual and preserve the current game.
-document.querySelectorAll('[data-map]').forEach(btn=>btn.onclick=()=>{terrainMap=btn.dataset.map;try{localStorage.setItem('jing-terrain-map',terrainMap)}catch{}draw();toast(terrainMap==='clean'?'已切换为素净棋盘':terrainMap==='vector'?'已切换为柳岸精绘':'已切换为柳岸行营');});
+document.querySelectorAll('[data-map]').forEach(btn=>btn.onclick=()=>{terrainMap=btn.dataset.map;try{localStorage.setItem('jing-terrain-map',terrainMap)}catch{}draw();toast(terrainMap==='clean'?'已切换为素净棋盘':'已切换为柳岸行营');});
+
+const levelNotes={2:'轻松入局，适合熟悉走法。',3:'基础攻防，适合日常练习。',4:'深入计算攻防变化，思考约 1 秒。',5:'更深搜索与连续吃子推演，思考约 3 秒。',6:'最高搜索预算，细算战术变化，思考约 6 秒。'};
+function updateLevelNote(){$('levelNote').textContent=levelNotes[$('level').value]||levelNotes[2];}
+$('level').addEventListener('change',updateLevelNote);updateLevelNote();
+
+// Use the same original H1 artwork in the skin picker.
+{const sample=document.querySelector('.skin-sample.sans');sample.textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:34px;height:34px'},sample);sansArtwork(icon,'rk');}
