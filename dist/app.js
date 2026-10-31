@@ -1,6 +1,57 @@
 let pageView='home',draftMode='ai';
 const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null;let last=null;let terrainMap='riverside';try{terrainMap=localStorage.getItem('jing-terrain-map')==='clean'?'clean':'riverside';if(localStorage.getItem('jing-terrain-map')==='vector')localStorage.setItem('jing-terrain-map','riverside')}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['regal','jade','street'].includes(savedSkin)?'mascot':['serif','sans','playful','mascot','benteng'].includes(savedSkin)?savedSkin:'playful';if(['regal','jade','street'].includes(savedSkin))localStorage.setItem('jing-xiangqi-skin','mascot')}catch{};const NS='http://www.w3.org/2000/svg';
-function node(tag,attrs={},parent=$('board')){let n=document.createElementNS(NS,tag);for(let k in attrs)n.setAttribute(k,attrs[k]);parent.append(n);return n;}function text(content,attrs,parent){let n=node('text',attrs,parent);n.textContent=content;return n;}
+function node(tag,attrs={},parent=$('board')){let n=document.createElementNS(NS,tag);for(let k in attrs)n.setAttribute(tag==='image'&&k==='href'&&parent.closest('.piece-artwork')?'data-art-src':k,attrs[k]);parent.append(n);return n;}function text(content,attrs,parent){let n=node('text',attrs,parent);n.textContent=content;return n;}
+
+// A complete, interactive board never depends on any image request.
+const pieceImageCache=new Map(),pieceImageQueue=[];
+let pieceImagesActive=0;
+function loadPieceImage(url){
+ const cached=pieceImageCache.get(url);
+ if(cached&&!(cached.failed&&Date.now()-cached.failed>30000))return cached.promise;
+ const entry={failed:0};
+ entry.promise=new Promise((resolve,reject)=>pieceImageQueue.push({url,entry,resolve,reject}));
+ pieceImageCache.set(url,entry);pumpPieceImages();return entry.promise;
+}
+function pumpPieceImages(){
+ while(pieceImagesActive<3&&pieceImageQueue.length){
+  const task=pieceImageQueue.shift();pieceImagesActive++;
+  let image,finished=false,timer;
+  const finish=error=>{
+   if(finished)return;finished=true;clearTimeout(timer);
+   if(image){image.onload=image.onerror=null;if(error)image.removeAttribute('src');}
+   pieceImagesActive--;if(error){task.entry.failed=Date.now();task.reject(error);}else task.resolve();
+   pumpPieceImages();
+  };
+  if(typeof Image!=='function'){finish(new Error('Image unavailable'));continue;}
+  image=new Image();image.decoding='async';
+  image.onload=()=>{const decode=typeof image.decode==='function'?image.decode():Promise.resolve();decode.then(()=>finish(),()=>finish(new Error('Image decode failed')));};
+  image.onerror=()=>finish(new Error('Image unavailable'));
+  timer=setTimeout(()=>finish(new Error('Image timed out')),12000);
+  image.src=task.url;
+ }
+}
+function paintPiece(parent,p){
+ const base=node('g',{'aria-hidden':'true','pointer-events':'none',class:'piece-fallback'},parent);
+ node('circle',{cy:1.5,r:25.5,fill:'#7a6546',opacity:'.18'},base);
+ node('circle',{r:25.5,fill:'#fff8e6',stroke:'#c9b58e','stroke-width':1.2},base);
+ node('circle',{r:21.5,fill:'none',stroke:p[0]==='r'?'#c87c62':'#9a9d88','stroke-width':.7},base);
+ text(XQ.names[p[0]][p[1]],{x:0,y:10,'text-anchor':'middle','font-family':'Microsoft YaHei,PingFang SC,system-ui,sans-serif','font-size':30,'font-weight':600,fill:p[0]==='r'?'#a84230':'#29352e'},base);
+ const art=node('g',{class:'piece-artwork',opacity:0,'pointer-events':'none','aria-hidden':'true','aria-label':parent.getAttribute('aria-label')||p},parent);
+ if(illustratedSkins[skin])mascotArt(art,p);else if(skin==='playful')playfulArt(art,p);else if(skin==='serif')artwork(art,p);else sansArtwork(art,p);
+ const images=[...art.querySelectorAll('image[data-art-src]')];
+ if(!images.length)return;
+ Promise.all(images.map(el=>loadPieceImage(el.getAttribute('data-art-src')))).then(()=>{
+  if(!art.isConnected)return;
+  let remaining=images.length,failed=false;
+  for(const el of images){
+   el.addEventListener('error',()=>{failed=true;art.setAttribute('opacity',0);base.removeAttribute('visibility');},{once:true});
+   el.addEventListener('load',()=>{if(!failed&&--remaining===0){art.setAttribute('opacity',1);base.setAttribute('visibility','hidden');}},{once:true});
+   el.setAttribute('href',el.getAttribute('data-art-src'));
+  }
+ }).catch(()=>{});
+}
+window.addEventListener('online',()=>{for(const [url,entry]of pieceImageCache)if(entry.failed)pieceImageCache.delete(url);draw();});
+
 function pos(x,y){return flipped?[504-x*56,564-y*56]:[56+x*56,60+y*56];}
 
 // Original artwork is sampled without repainting the six supplied pieces.
@@ -125,12 +176,12 @@ if(skin==='playful'&&terrainMap==='clean'){
 }
 
 if(last&&pageView==='game')for(let p of [[last.x,last.y],[last.X,last.Y]]){let [x,y]=pos(...p);node('rect',{x:x-26,y:y-26,width:52,height:52,rx:10,fill:'#a3916244',stroke:'#a3916266','stroke-width':.8});}
-for(let y=0;y<10;y++)for(let x=0;x<9;x++){let p=visualBoard[y][x];if(!p)continue;let [cx,cy]=pos(x,y),sel=selected&&selected.x===x&&selected.y===y;let g=node('g',{class:'piece jade-piece',transform:`translate(${cx} ${cy})`,role:'button',tabindex:'0','aria-label':(p[0]==='r'?'红':'黑')+XQ.names[p[0]][p[1]]+` ${x+1}列${y+1}行`});if(sel)node('rect',{x:-26,y:-26,width:52,height:52,rx:11,fill:'#b6a78325',stroke:'#9a8b6b','stroke-width':1},g);if(illustratedSkins[skin]){mascotArt(g,p)}else if(skin==='playful'){playfulArt(g,p)}else if(skin==='serif'){artwork(g,p)}else{sansArtwork(g,p);node('circle',{r:27,fill:'transparent','pointer-events':'all'},g)}g.onclick=e=>{e.stopPropagation();click(x,y)};g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();click(x,y)}};}
+for(let y=0;y<10;y++)for(let x=0;x<9;x++){let p=visualBoard[y][x];if(!p)continue;let [cx,cy]=pos(x,y),sel=selected&&selected.x===x&&selected.y===y;let g=node('g',{class:'piece jade-piece',transform:`translate(${cx} ${cy})`,role:'button',tabindex:'0','aria-label':(p[0]==='r'?'红':'黑')+XQ.names[p[0]][p[1]]+` ${x+1}列${y+1}行`});if(sel)node('rect',{x:-26,y:-26,width:52,height:52,rx:11,fill:'#b6a78325',stroke:'#9a8b6b','stroke-width':1},g);paintPiece(g,p);node('circle',{r:27,fill:'transparent','pointer-events':'all'},g);g.onclick=e=>{e.stopPropagation();click(x,y)};g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();click(x,y)}};}
 if(selected)for(let m of legal.filter(m=>m.x===selected.x&&m.y===selected.y)){let [cx,cy]=pos(m.X,m.Y);let target=node('circle',{cx,cy,r:board[m.Y][m.X]?25:7,fill:board[m.Y][m.X]?'none':'#7c8b6a',stroke:board[m.Y][m.X]?'#9a5142':'none','stroke-width':2,'pointer-events':'all',opacity:.8,role:'button',tabindex:'0','aria-label':`落子至 ${m.X+1}列${m.Y+1}行`,style:'cursor:pointer'});target.onclick=e=>{e.stopPropagation();click(m.X,m.Y)};target.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();click(m.X,m.Y)}};}
 document.querySelectorAll('[data-skin],[data-game-skin]').forEach(btn=>{let active=(btn.dataset.skin||btn.dataset.gameSkin)===skin;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});$('round').textContent=`第 ${String(Math.floor(history.length/2)+1).padStart(2,'0')} 回合`;$('moveCount').textContent=String(history.length).padStart(2,'0');$('history').innerHTML='';history.forEach((h,i)=>{let li=document.createElement('li');li.textContent=h.label;$('history').append(li)});$('undo').disabled=!history.length||busy;$('offerDraw').disabled=ended||busy||mode==='ai'&&turn!=='r';
 const repeatedSide=['r','b'].find(side=>XQ.checkStreak(history,board,side)>=5);
 $('longCheckWarning').hidden=pageView!=='game'||ended||!repeatedSide;
-$('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));sansArtwork(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));mascotArt(icon,turn+'k',50,false);}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));playfulArt(icon,turn+'k',50);}if(!ended){$('status').textContent=busy?'山隐正在凝思…':(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}}
+$('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));paintPiece(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));paintPiece(icon,turn+'k');}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));paintPiece(icon,turn+'k');}if(!ended){$('status').textContent=busy?'山隐正在凝思…':(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}}
 document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'温玉雅宋',sans:'疏朗 · 黑体',playful:'玲珑将相',mascot:'墨镜棋社',benteng:'奔腾入阵'}[skin]));});
 $('board').onclick=e=>{let p=$('board').createSVGPoint();p.x=e.clientX;p.y=e.clientY;p=p.matrixTransform($('board').getScreenCTM().inverse());let x=Math.round((p.x-56)/56),y=Math.round((p.y-60)/56);if(flipped){x=8-x;y=9-y}if(x>=0&&x<9&&y>=0&&y<10)click(x,y)};
 function click(x,y){if(pageView!=='game'||ended||busy||mode==='ai'&&turn==='b')return;if(board[y][x]?.[0]===turn){selected=selected?.x===x&&selected?.y===y?null:{x,y};draw();return}if(selected){let m=legal.find(m=>m.x===selected.x&&m.y===selected.y&&m.X===x&&m.Y===y);if(m){move(m);computer()}else toast('此处不可落子')}}
@@ -288,3 +339,7 @@ $('level').addEventListener('change',updateLevelNote);updateLevelNote();
 // Use the same original H1 artwork in the skin picker.
 {const sample=document.querySelector('.skin-sample.sans');const icon=document.createElement('img');icon.src='./assets/fast-v1/sans-icon.webp';icon.alt='';icon.width=34;icon.height=34;icon.decoding='async';sample.replaceChildren(icon);}
 
+
+
+// Persist successful artwork downloads for later visits, without prefetching other skins.
+if(typeof navigator!=='undefined'&&'serviceWorker' in navigator){setTimeout(()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}),1000);}
