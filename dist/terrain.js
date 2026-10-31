@@ -2,7 +2,7 @@
 window.drawPlayfulTerrain=function(svg,variant){
  if(variant!=="vector"){
  const ns="http://www.w3.org/2000/svg";const group=document.createElementNS(ns,"g");group.setAttribute("class","terrain-art");group.setAttribute("pointer-events","none");group.setAttribute("aria-hidden","true");
- for(const [sy,sh,y,h]of [[24,626,-8,292],[650,175,284,56],[825,613,340,292]]){const viewport=document.createElementNS(ns,"svg");for(const[k,v]of Object.entries({x:20,y,width:520,height:h,viewBox:`20 ${sy} 984 ${sh}`,preserveAspectRatio:"none",overflow:"hidden",style:`width:520px;height:${h}px;overflow:hidden`}))viewport.setAttribute(k,v);const img=document.createElementNS(ns,"image");for(const[k,v]of Object.entries({href:"./assets/q-hd/riverside-terrain.png",width:1024,height:1536}))img.setAttribute(k,v);viewport.append(img);group.append(viewport)}svg.append(group);return;
+ for(const [sy,sh,y,h]of [[24,626,-8,292],[650,175,284,56],[825,613,340,292]]){const viewport=document.createElementNS(ns,"svg");for(const[k,v]of Object.entries({x:20,y,width:520,height:h,viewBox:`20 ${sy} 984 ${sh}`,preserveAspectRatio:"none",overflow:"hidden",style:`width:520px;height:${h}px;overflow:hidden`}))viewport.setAttribute(k,v);const img=document.createElementNS(ns,"image");for(const[k,v]of Object.entries({href:"./assets/fast-v1/q-hd/riverside-terrain.webp",width:1024,height:1536}))img.setAttribute(k,v);viewport.append(img);group.append(viewport)}svg.append(group);return;
  }
  const NS='http://www.w3.org/2000/svg';
  const layer=document.createElementNS(NS,'g');layer.setAttribute('class','terrain-art');layer.setAttribute('aria-hidden','true');layer.setAttribute('pointer-events','none');
@@ -76,3 +76,4 @@ window.drawPlayfulTerrain=function(svg,variant){
  for(const [x,y,s]of [[76,289,.6],[163,290,.45],[396,288,.56],[484,338,.5],[140,336,.45],[341,337,.4]])use('bush',x,y,s);
  for(const [x,y]of [[76,338],[183,287],[365,287],[477,339]])use('rock',x,y,.6);
 };
+

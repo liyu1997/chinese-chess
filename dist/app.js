@@ -2,7 +2,6 @@ let pageView='home',draftMode='ai';
 const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null;let last=null;let terrainMap='riverside';try{terrainMap=localStorage.getItem('jing-terrain-map')==='clean'?'clean':'riverside';if(localStorage.getItem('jing-terrain-map')==='vector')localStorage.setItem('jing-terrain-map','riverside')}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['regal','jade','street'].includes(savedSkin)?'mascot':['serif','sans','playful','mascot','benteng'].includes(savedSkin)?savedSkin:'playful';if(['regal','jade','street'].includes(savedSkin))localStorage.setItem('jing-xiangqi-skin','mascot')}catch{};const NS='http://www.w3.org/2000/svg';
 function node(tag,attrs={},parent=$('board')){let n=document.createElementNS(NS,tag);for(let k in attrs)n.setAttribute(k,attrs[k]);parent.append(n);return n;}function text(content,attrs,parent){let n=node('text',attrs,parent);n.textContent=content;return n;}
 function pos(x,y){return flipped?[504-x*56,564-y*56]:[56+x*56,60+y*56];}
-function glyph(parent,char,color,stroke){let v=PIECE_GLYPHS[skin][char],[x0,y0,x1,y1]=v.box;let scale=Math.min(28/(x1-x0),30/(y1-y0));let group=node('g',{transform:`translate(${-(x0+x1)/2*scale} ${(y0+y1)/2*scale}) scale(${scale} ${-scale})`,'aria-hidden':'true'},parent);node('path',{d:v.d,fill:color,...(stroke?{stroke,'stroke-width':.42,'vector-effect':'non-scaling-stroke','stroke-linejoin':'round'}:{})},group);}
 
 // Original artwork is sampled without repainting the six supplied pieces.
 const referenceTiles={rk:[0,0],rr:[1,0],rh:[2,0],bk:[0,1],br:[1,1],bh:[2,1]};
@@ -14,12 +13,12 @@ function artwork(parent,p){
   const id='original-clip-'+p+'-'+parent.getAttribute('aria-label').replace(/[^0-9]/g,'');
   const defs=node('defs',{},viewport);const clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},defs);
   node('ellipse',{cx:ox+154,cy:oy+163,rx:140,ry:144},clip);
-  node('image',{href:'./assets/jade-reference-original.png',width:934,height:652,'clip-path':'url(#'+id+')'},viewport);
+  node('image',{href:'./assets/fast-v1/jade-reference-original.webp',width:934,height:652,'clip-path':'url(#'+id+')'},viewport);
  }else{
   const col={re:0,ra:1,rc:2,rp:3,be:0,ba:1,bc:2,bp:3}[p];
   const row=p[0]==='r'?0:1;
   const viewport=node('svg',{x:-29,y:-29,width:58,height:58,viewBox:(col*512)+' '+(row*512)+' 512 512',style:'overflow:hidden','pointer-events':'none'},parent);
-  node('image',{href:'./assets/jade-missing-atlas.png',width:2048,height:1024},viewport);
+  node('image',{href:'./assets/fast-v1/jade-missing-atlas.webp',width:2048,height:1024},viewport);
  }
 }
 
@@ -34,14 +33,14 @@ function sansArtwork(parent,p){
   const v=node('svg',{x:-28,y:-29,width:56,height:59,viewBox:`${cx-190} ${cy-195} 380 400`,style:'width:56px;height:59px;overflow:hidden','pointer-events':'none','aria-hidden':'true'},parent);
   const clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},node('defs',{},v));
   node('ellipse',{cx,cy,rx:186,ry:189},clip);
-  node('image',{href:'./assets/sans-h1/reference.png',width:1254,height:1254,'clip-path':`url(#${id})`},v);
+  node('image',{href:'./assets/fast-v1/sans-h1/reference.webp',width:1254,height:1254,'clip-path':`url(#${id})`},v);
  }else{
   const source={a:{r:[471,438,342,344],b:[1295,438,343,344]},e:{r:[482,438,346,349],b:[1282,438,350,350]},c:{r:[463,429,359,368],b:[1305,429,365,369]},p:{r:[480,434,343,352],b:[1293,434,347,352]}}[p[1]][p[0]];
   const [cx,cy,rx,ry]=source,id='sans-art-'+(++sansArtwork.id);
   const v=node('svg',{x:-28,y:-29,width:56,height:59,viewBox:`${cx-rx-3} ${cy-ry-3} ${2*rx+6} ${2*ry+6}`,preserveAspectRatio:'none',style:'width:56px;height:59px;overflow:hidden','pointer-events':'none','aria-hidden':'true'},parent);
   const clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},node('defs',{},v));
   node('ellipse',{cx,cy,rx,ry},clip);
-  node('image',{href:`./assets/sans-h1/${p[1]}.png`,width:1774,height:887,'clip-path':`url(#${id})`},v);
+  node('image',{href:`./assets/fast-v1/sans-h1/${p[1]}.webp`,width:1774,height:887,'clip-path':`url(#${id})`},v);
  }
 }
 sansArtwork.id=0;
@@ -62,7 +61,7 @@ function playfulArt(parent,p,size=52){
  const v=node('svg',{x:-size/2,y:-size/2,width:size,height:size,viewBox:`${x-rx} ${y-ry} ${rx*2} ${ry*2}`,preserveAspectRatio:'none',overflow:'hidden','pointer-events':'none',class:'playful-art',style:`width:${size}px;height:${size}px`,'aria-hidden':'true'},parent);
  const id='q-hd-clip-'+(++playfulArt.id);const defs=node('defs',{},v);const clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},defs);
  node('ellipse',{cx:x,cy:y,rx:rx-1,ry:ry-1},clip);
- node('image',{href:`./assets/q-hd/${type==='k'?'k-unarmed-v3':type}.png`,width:1774,height:887,'clip-path':`url(#${id})`,'pointer-events':'none'},v);
+ node('image',{href:`./assets/fast-v1/q-hd/${type==='k'?'k-unarmed-v3':type}.webp`,width:1774,height:887,'clip-path':`url(#${id})`,'pointer-events':'none'},v);
 }
 playfulArt.id=0;
 // Brand collection: all fourteen illustrated emblems share one high-resolution atlas.
@@ -219,7 +218,7 @@ function reset(){aiStyle=['active','solid','flank'][Math.floor(Math.random()*3)]
 function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('toast').style.opacity=0,2200)}
 $('undo').onclick=()=>{if(!history.length||busy)return;epoch++;let n=mode==='ai'&&turn==='r'&&history.length>1?2:1;while(n--&&history.length){let h=history.pop();board=h.board;turn=h.turn;last=h.last;}ended=false;drawAgreed=false;selected=null;legal=XQ.moves(board,turn);save();draw();toast('棋局已退回上一步')};$('new').onclick=startNewGame;function showConfirm(fn){let d=document.createElement('dialog');d.innerHTML='<div class="eyebrow">A NEW BEGINNING</div><h2>重新开启一局？</h2><p>当前棋局将被新的棋局替换。</p><button class="primary">确认新局 ↗</button><button style="width:100%;padding:18px">继续此局</button>';document.body.append(d);let bs=d.querySelectorAll('button');bs[0].onclick=()=>{d.close();d.remove();fn()};bs[1].onclick=()=>{d.close();d.remove()};d.showModal()}
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{draftMode=b.dataset.mode;draw()});$('flip').onclick=()=>{flipped=!flipped;draw();save()};$('sound').onclick=()=>{muted=!muted;$('sound').textContent=muted?'♪　音效关':'♪　音效开';audio()};$('help').onclick=()=>$('dialog').showModal();$('close').onclick=$('understood').onclick=()=>$('dialog').close();
-try{let s=JSON.parse(localStorage.getItem('jing-xiangqi-v1'));if(s&&s.board.length===10){({board,turn,history,mode,flipped,last,ended}=s);drawAgreed=s.drawAgreed===true;if(ended&&s.status?.includes('和棋')&&!drawAgreed)ended=false;if(s.level)$('level').value=s.level;if(ended){$('status').textContent=s.status;$('hint').textContent=s.hint}}}catch{}legal=XQ.moves(board,turn);draw();
+try{let s=JSON.parse(localStorage.getItem('jing-xiangqi-v1'));if(s&&s.board.length===10){({board,turn,history,mode,flipped,last,ended}=s);drawAgreed=s.drawAgreed===true;if(ended&&s.status?.includes('和棋')&&!drawAgreed)ended=false;if(s.level)$('level').value=s.level;if(ended){$('status').textContent=s.status;$('hint').textContent=s.hint}}}catch{}legal=XQ.moves(board,turn);
 
 // Immersive view hides all surrounding UI; the board remains fully interactive.
 let immersive=false;
@@ -287,4 +286,5 @@ function updateLevelNote(){$('levelNote').textContent=levelNotes[$('level').valu
 $('level').addEventListener('change',updateLevelNote);updateLevelNote();
 
 // Use the same original H1 artwork in the skin picker.
-{const sample=document.querySelector('.skin-sample.sans');sample.textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:34px;height:34px'},sample);sansArtwork(icon,'rk');}
+{const sample=document.querySelector('.skin-sample.sans');const icon=document.createElement('img');icon.src='./assets/fast-v1/sans-icon.webp';icon.alt='';icon.width=34;icon.height=34;icon.decoding='async';sample.replaceChildren(icon);}
+
