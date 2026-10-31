@@ -8,7 +8,7 @@ let pieceImagesActive=0;
 function loadPieceImage(url){
  const cached=pieceImageCache.get(url);
  if(cached&&!(cached.failed&&Date.now()-cached.failed>30000))return cached.promise;
- const entry={failed:0};
+ const entry={failed:0,ready:false};
  entry.promise=new Promise((resolve,reject)=>pieceImageQueue.push({url,entry,resolve,reject}));
  pieceImageCache.set(url,entry);pumpPieceImages();return entry.promise;
 }
@@ -19,7 +19,7 @@ function pumpPieceImages(){
   const finish=error=>{
    if(finished)return;finished=true;clearTimeout(timer);
    if(image){image.onload=image.onerror=null;if(error)image.removeAttribute('src');}
-   pieceImagesActive--;if(error){task.entry.failed=Date.now();task.reject(error);}else task.resolve();
+   pieceImagesActive--;if(error){task.entry.ready=false;task.entry.failed=Date.now();task.reject(error);}else{task.entry.ready=true;task.resolve();}
    pumpPieceImages();
   };
   if(typeof Image!=='function'){finish(new Error('Image unavailable'));continue;}
@@ -40,15 +40,25 @@ function paintPiece(parent,p,pieceSkin=skin){
  if(illustratedSkins[pieceSkin])mascotArt(art,p,51,true,pieceSkin);else if(pieceSkin==='playful')playfulArt(art,p);else if(pieceSkin==='serif')artwork(art,p);else sansArtwork(art,p);
  const images=[...art.querySelectorAll('image[data-art-src]')];
  if(!images.length)return;
+ const batch=activePieceBatch,record={art,base,images,ready:false};
+ if(batch)batch.pieces.push(record);
+ const fail=()=>{
+  if(batch){batch.failed=true;readyPieceSkins.delete(batch.skin);for(const piece of batch.pieces){piece.art.setAttribute('opacity',0);piece.base.removeAttribute('visibility');}}
+  else{art.setAttribute('opacity',0);base.removeAttribute('visibility');}
+ };
  Promise.all(images.map(el=>loadPieceImage(el.getAttribute('data-art-src')))).then(()=>{
   if(!art.isConnected)return;
   let remaining=images.length,failed=false;
   for(const el of images){
-   el.addEventListener('error',()=>{failed=true;art.setAttribute('opacity',0);base.removeAttribute('visibility');},{once:true});
-   el.addEventListener('load',()=>{if(!failed&&--remaining===0){art.setAttribute('opacity',1);base.setAttribute('visibility','hidden');}},{once:true});
+   el.addEventListener('error',()=>{failed=true;fail();},{once:true});
+   el.addEventListener('load',()=>{
+    if(failed||--remaining!==0)return;
+    record.ready=true;
+    if(batch)flushPieceBatch(batch);else{art.setAttribute('opacity',1);base.setAttribute('visibility','hidden');}
+   },{once:true});
    el.setAttribute('href',el.getAttribute('data-art-src'));
   }
- }).catch(()=>{});
+ }).catch(fail);
 }
 window.addEventListener('online',()=>{for(const [url,entry]of pieceImageCache)if(entry.failed)pieceImageCache.delete(url);draw();});
 
@@ -157,7 +167,24 @@ function applySkin(){
 
 }
 
-function draw(){applySkin();let visualBoard=pageView==='home'?XQ.initial():board;let svg=$('board');svg.innerHTML=`<defs><linearGradient id="red-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#77271e"/><stop offset=".35" stop-color="#a13f2d"/><stop offset="1" stop-color="#ba5640"/></linearGradient><linearGradient id="black-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#141c18"/><stop offset=".4" stop-color="#29332c"/><stop offset="1" stop-color="#444b40"/></linearGradient></defs>`;
+
+// One board render is one visual transaction: never mix basic and HD pieces.
+let activePieceBatch=null,boardPieceBatch=null;
+const readyPieceSkins=new Set();
+function flushPieceBatch(batch){
+ if(!batch.sealed||batch.failed||batch!==boardPieceBatch||!batch.pieces.length)return;
+ const alreadyDecoded=readyPieceSkins.has(batch.skin)&&batch.pieces.every(piece=>piece.images.every(image=>pieceImageCache.get(image.getAttribute('data-art-src'))?.ready));
+ if(!alreadyDecoded&&!batch.pieces.every(piece=>piece.ready))return;
+ for(const piece of batch.pieces){piece.art.setAttribute('opacity',1);piece.base.setAttribute('visibility','hidden');}
+ readyPieceSkins.add(batch.skin);
+}
+function draw(){
+ const previous=activePieceBatch,batch={skin,pieces:[],sealed:false,failed:false};
+ activePieceBatch=boardPieceBatch=batch;
+ try{renderBoard();}finally{activePieceBatch=previous;batch.sealed=true;flushPieceBatch(batch);}
+}
+
+function renderBoard(){applySkin();let visualBoard=pageView==='home'?XQ.initial():board;let svg=$('board');svg.innerHTML=`<defs><linearGradient id="red-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#77271e"/><stop offset=".35" stop-color="#a13f2d"/><stop offset="1" stop-color="#ba5640"/></linearGradient><linearGradient id="black-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#141c18"/><stop offset=".4" stop-color="#29332c"/><stop offset="1" stop-color="#444b40"/></linearGradient></defs>`;
 if(skin==='playful'&&terrainMap!=='clean')drawPlayfulTerrain(svg,terrainMap);
 let grid=node('g',{'stroke':skin==='playful'?'#a39786':'#9f927a','stroke-width':skin==='playful'?'.6':'.85',fill:'none'});for(let y=0;y<10;y++)node('path',{d:`M56 ${60+y*56}H504`},grid);for(let x=0;x<9;x++){let xx=56+x*56;node('path',{d:x===0||x===8?`M${xx} 60V564`:`M${xx} 60V284 M${xx} 340V564`},grid);}if(skin!=='playful')node('rect',{x:51,y:55,width:458,height:514,'stroke-width':1.5},grid);for(let y of [60,452])node('path',{d:`M224 ${y}l112 112 M336 ${y}l-112 112`},grid);if(skin!=='playful')for(let y of [2,3,6,7])for(let x of y===2||y===7?[1,7]:[0,2,4,6,8]){let X=56+x*56,Y=60+y*56;for(let side of [-1,1])if(x+side>=0&&x+side<9)for(let v of [-1,1])node('path',{d:`M${X+side*6} ${Y+v*12}v${-v*6}h${side*6}`},grid);}
 // High-detail ceramic river reliefs from the approved board reference.
@@ -353,4 +380,5 @@ document.querySelectorAll('.home-panel [data-skin]').forEach(button=>{
 
 // Persist successful artwork downloads for later visits, without prefetching other skins.
 if(typeof navigator!=='undefined'&&'serviceWorker' in navigator){setTimeout(()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}),1000);}
+
 
