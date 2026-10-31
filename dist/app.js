@@ -30,14 +30,14 @@ function pumpPieceImages(){
   image.src=task.url;
  }
 }
-function paintPiece(parent,p){
+function paintPiece(parent,p,pieceSkin=skin){
  const base=node('g',{'aria-hidden':'true','pointer-events':'none',class:'piece-fallback'},parent);
  node('circle',{cy:1.5,r:25.5,fill:'#7a6546',opacity:'.18'},base);
  node('circle',{r:25.5,fill:'#fff8e6',stroke:'#c9b58e','stroke-width':1.2},base);
  node('circle',{r:21.5,fill:'none',stroke:p[0]==='r'?'#c87c62':'#9a9d88','stroke-width':.7},base);
  text(XQ.names[p[0]][p[1]],{x:0,y:10,'text-anchor':'middle','font-family':'Microsoft YaHei,PingFang SC,system-ui,sans-serif','font-size':30,'font-weight':600,fill:p[0]==='r'?'#a84230':'#29352e'},base);
  const art=node('g',{class:'piece-artwork',opacity:0,'pointer-events':'none','aria-hidden':'true','aria-label':parent.getAttribute('aria-label')||p},parent);
- if(illustratedSkins[skin])mascotArt(art,p);else if(skin==='playful')playfulArt(art,p);else if(skin==='serif')artwork(art,p);else sansArtwork(art,p);
+ if(illustratedSkins[pieceSkin])mascotArt(art,p,51,true,pieceSkin);else if(pieceSkin==='playful')playfulArt(art,p);else if(pieceSkin==='serif')artwork(art,p);else sansArtwork(art,p);
  const images=[...art.querySelectorAll('image[data-art-src]')];
  if(!images.length)return;
  Promise.all(images.map(el=>loadPieceImage(el.getAttribute('data-art-src')))).then(()=>{
@@ -120,8 +120,8 @@ const illustratedSkins={
  benteng:{name:'奔腾入阵',note:'汉风 · 漫画',river:'奔 腾 入 阵',line:'妙 棋 手 · 棋 逢 趣 手',red:'#fff0da',black:'#e8f3ff'},
  mascot:{name:'墨镜棋社',note:'酷趣 · 图案',river:'MIAOQI',line:'棋 逢 趣 手',red:'#fff0da',black:'#e8f3ff'},
 };
-function mascotArt(parent,p,size=51,badge=true){
- const id='mascot-clip-'+(++mascotArt.id),refined=skin==='benteng',r=size/2;
+function mascotArt(parent,p,size=51,badge=true,artSkin=skin){
+ const id='mascot-clip-'+(++mascotArt.id),refined=artSkin==='benteng',r=size/2;
  const defs=node('defs',{},parent),clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},defs);
  if(refined){
   const gradient=node('linearGradient',{id:id+'-rim',x1:'0',y1:'0',x2:'0',y2:'1'},defs);
@@ -132,14 +132,14 @@ function mascotArt(parent,p,size=51,badge=true){
   node('circle',{r:r-.65,fill:`url(#${id}-rim)`,stroke:'#292925','stroke-width':1.15,'pointer-events':'none'},parent);
  }
  node('circle',{cx:0,cy:0,r:refined?r-4:r},clip);
- node('image',{href:`./assets/${skin}/${p}.png?v=benteng29`,x:-r,y:-r,width:size,height:size,'clip-path':`url(#${id})`,'pointer-events':'none',class:'mascot-art','aria-hidden':'true'},parent);
+ node('image',{href:`./assets/${artSkin}/${p}.png?v=benteng29`,x:-r,y:-r,width:size,height:size,'clip-path':`url(#${id})`,'pointer-events':'none',class:'mascot-art','aria-hidden':'true'},parent);
  if(refined){
   node('circle',{r:r-3.75,fill:'none',stroke:'#fff9eb','stroke-width':1,'pointer-events':'none'},parent);
   node('circle',{r:r-2.8,fill:'none',stroke:p[0]==='r'?'#bb552b':'#557281','stroke-width':.7,'pointer-events':'none'},parent);
  }
  if(badge){
   const x=refined?12.5:18,y=refined?14:19,br=refined?6.1:8.4;
-  node('circle',{cx:x,cy:y,r:br,fill:p[0]==='r'?illustratedSkins[skin].red:illustratedSkins[skin].black,stroke:refined?'#51443a':'#171714','stroke-width':refined?.7:1.3,'pointer-events':'none'},parent);
+  node('circle',{cx:x,cy:y,r:br,fill:p[0]==='r'?illustratedSkins[artSkin].red:illustratedSkins[artSkin].black,stroke:refined?'#51443a':'#171714','stroke-width':refined?.7:1.3,'pointer-events':'none'},parent);
   text(XQ.names[p[0]][p[1]],{x,y:y+(refined?3:3.8),'text-anchor':'middle','font-size':refined?8.6:10.5,'font-weight':700,fill:'#171714','font-family':'Microsoft YaHei, sans-serif','pointer-events':'none'},parent);
  }
  node('circle',{r:r+2,fill:'transparent','pointer-events':'all'},parent);
@@ -154,7 +154,7 @@ function applySkin(){
  const name=illustratedSkins[skin]?illustratedSkins[skin].name+' · 妙棋手系列':skin==='playful'?'玲珑将相':'凝脂白玉 · 山水相望';
  document.querySelectorAll('.light-label,.preview-caption').forEach(el=>el.textContent=name);
  $('captures').textContent=illustratedSkins[skin]?'棋逢趣手，落子有趣。':skin==='playful'?'小小棋子，大大天地。':'落子无悔，亦可重来。';
- document.querySelector('.home-footnote').textContent='棋局自动保存，随时回来继续。';
+
 }
 
 function draw(){applySkin();let visualBoard=pageView==='home'?XQ.initial():board;let svg=$('board');svg.innerHTML=`<defs><linearGradient id="red-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#77271e"/><stop offset=".35" stop-color="#a13f2d"/><stop offset="1" stop-color="#ba5640"/></linearGradient><linearGradient id="black-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#141c18"/><stop offset=".4" stop-color="#29332c"/><stop offset="1" stop-color="#444b40"/></linearGradient></defs>`;
@@ -337,9 +337,20 @@ function updateLevelNote(){$('levelNote').textContent=levelNotes[$('level').valu
 $('level').addEventListener('change',updateLevelNote);updateLevelNote();
 
 // Use the same original H1 artwork in the skin picker.
-{const sample=document.querySelector('.skin-sample.sans');const icon=document.createElement('img');icon.src='./assets/fast-v1/sans-icon.webp';icon.alt='';icon.width=34;icon.height=34;icon.decoding='async';sample.replaceChildren(icon);}
+const previewObserver=typeof IntersectionObserver==='function'?new IntersectionObserver(entries=>{
+ for(const entry of entries)if(entry.isIntersecting){
+  paintPiece(entry.target.querySelector('svg'),'rk',entry.target.closest('[data-skin]').dataset.skin);
+  previewObserver.unobserve(entry.target);
+ }
+},{rootMargin:'100px'}):null;
+document.querySelectorAll('.home-panel [data-skin]').forEach(button=>{
+ const sample=button.querySelector('.skin-sample');sample.replaceChildren();
+ const svg=node('svg',{viewBox:'-32 -32 64 64',width:64,height:64,'aria-hidden':'true'},sample);
+ if(previewObserver)previewObserver.observe(sample);else paintPiece(svg,'rk',button.dataset.skin);
+});
 
 
 
 // Persist successful artwork downloads for later visits, without prefetching other skins.
 if(typeof navigator!=='undefined'&&'serviceWorker' in navigator){setTimeout(()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}),1000);}
+
