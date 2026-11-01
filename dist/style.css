@@ -348,3 +348,42 @@ main.settings-page{display:block;max-width:620px;margin:15px auto 60px;padding:0
  body[data-page="home"] .home-footer{padding:4px 0 15px;margin:0 20px}
  main.settings-page{margin-top:14px;padding:0 20px}
 }
+
+
+/* Center the board on the viewport, with balanced side columns on desktop. */
+.home-mascot{display:none}
+body[data-page="home"] main.home-page{--home-board-width:min(44vw,calc(100vw - 680px),calc((100svh - 160px)*.8125),650px);display:grid;grid-template-columns:minmax(0,1fr) var(--home-board-width) minmax(0,1fr);column-gap:max(32px,calc(var(--home-board-width)*.135 + 10px));row-gap:0;max-width:none;width:100%;padding:8px 36px 24px;min-height:calc(100svh - 130px);align-items:center}
+body[data-page="home"] .home-preview{grid-column:2;position:relative;top:auto;align-self:center;width:100%;padding:0;overflow:visible}
+body[data-page="home"] .home-preview .game{position:relative;width:100%;max-width:none;margin:0}
+body[data-page="home"] .home-panel{grid-column:3;justify-self:start;width:100%;max-width:300px;align-self:center}
+body[data-page="home"] .home-mascot{display:block;position:absolute;right:0;bottom:-3%;width:26%;max-width:165px;height:auto;transform:translateX(50%);z-index:3;pointer-events:none;object-fit:contain}
+/* The same ink outline and orange fill as the grandpa logo. */
+body[data-page="home"] .home-panel .home-actions #new{min-height:58px;background:#ff922e;color:#22241e;border:2px solid #272923;border-radius:16px;box-shadow:0 4px 0 #272923;padding:13px 16px 13px 20px;font-size:18px;letter-spacing:.5px;transition:transform .15s,box-shadow .15s,background .15s}
+body[data-page="home"] .home-panel .home-actions #new>span{display:grid;place-items:center;width:31px;height:31px;border-radius:50%;background:#272923;color:#fff8e9;font:400 22px/1 Arial}
+body[data-page="home"] .home-panel .home-actions #new:hover{background:#ffa344;transform:translateY(-1px);box-shadow:0 5px 0 #272923}
+body[data-page="home"] .home-panel .home-actions #new:active{transform:translateY(3px);box-shadow:0 1px 0 #272923}
+body[data-page="home"] .home-panel .home-actions .settings{margin-top:23px;gap:8px}
+body[data-page="home"] .home-panel .segmented{display:flex;gap:5px;padding:4px;background:#e9e6dc;border:1.5px solid #d9d5c7;border-radius:13px;box-shadow:none}
+body[data-page="home"] .home-panel .segmented button{display:flex;align-items:center;justify-content:center;gap:6px;min-height:37px;min-width:0;padding:7px 4px;border:1.5px solid transparent;border-radius:9px;font:500 12px/1.3 "Microsoft YaHei","PingFang SC",sans-serif;color:#838476;white-space:nowrap}
+body[data-page="home"] .home-panel .segmented button.active{background:#fff4df;border-color:#34362e;box-shadow:0 2px 0 #34362e;color:#292c25}
+body[data-page="home"] .segmented button svg{width:19px;height:19px;flex-shrink:0;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+body[data-page="home"] .segmented button.active svg{color:#282b23;fill:#ffc373}
+body[data-page="home"] .segmented button:hover:not(.active){color:#3c4134;background:#f4f0e5}
+body[data-page="home"] .academy-entry{gap:10px;margin-top:16px;padding:10px 12px;min-height:66px;background:#fff6e5;border:1.5px solid #34362e;border-radius:14px;box-shadow:0 3px 0 #d6d0bf;color:#30352a;transition:background .15s,transform .15s}
+body[data-page="home"] .academy-building{display:grid;place-items:center;width:44px;height:44px;flex-shrink:0}
+body[data-page="home"] .academy-building svg{width:44px;height:44px}
+body[data-page="home"] .academy-entry strong{font-size:13px;font-weight:600;letter-spacing:.5px}
+body[data-page="home"] .academy-entry>span:last-child{display:grid;place-items:center;width:25px;height:25px;border-radius:50%;background:#f8bc72;color:#34362e;font:18px/1 Arial}
+body[data-page="home"] .academy-entry:hover{background:#ffedcc;transform:translateY(-1px);border-color:#34362e}
+@media(max-width:1100px){
+ body[data-page="home"] main.home-page{display:flex;flex-direction:column;gap:18px;max-width:500px;padding:0 20px 20px;min-height:0;margin:0 auto}
+ body[data-page="home"] .home-preview{width:min(calc(100% - 44px),calc((100svh - 330px)*.8125),400px);padding:0;align-self:center}
+ body[data-page="home"] .home-preview .game{width:100%;max-width:none}
+ body[data-page="home"] .home-panel{width:100%;max-width:none;align-self:center}
+ body[data-page="home"] .home-mascot{width:26%;max-width:104px;right:0;bottom:-3%;transform:translateX(50%)}
+ body[data-page="home"] .home-panel .home-actions #new{min-height:54px;font-size:17px;padding:10px 15px 10px 18px}
+ body[data-page="home"] .home-panel .home-actions .settings{margin-top:19px}
+ body[data-page="home"] .academy-entry{min-height:62px;padding:8px 12px}
+ body[data-page="home"] .academy-building,body[data-page="home"] .academy-building svg{width:40px;height:40px}
+}
+@media(prefers-reduced-motion:reduce){body[data-page="home"] .home-panel .home-actions #new,body[data-page="home"] .academy-entry{transition:none}}
