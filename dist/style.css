@@ -216,3 +216,7 @@ body[data-page="home"] .home-footer{display:flex;justify-content:space-between;m
  body[data-page="home"] .home-footer{margin:0 20px;padding:12px 0}
 }
 @media(max-width:350px){body[data-page="home"] .home-panel .settings{grid-template-columns:1fr}body[data-page="home"] .home-panel .level-row{justify-content:space-between}body[data-page="home"] .home-panel .level-row>label{display:block}}
+
+.game-toolbar{max-width:560px;flex-wrap:wrap;height:auto;min-height:42px}
+.game-toolbar>button#resign{color:#a14d3d}
+@media(max-width:760px){.game-toolbar{max-width:100%;gap:0}.game-toolbar>button,.game-more>summary{padding:10px 6px}.game-stage{width:min(100%,calc((100dvh - 160px)*584/648))}}

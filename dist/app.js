@@ -1,5 +1,5 @@
 let pageView='home',draftMode='ai';
-const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null;let last=null;let terrainMap='riverside';try{terrainMap=localStorage.getItem('jing-terrain-map')==='clean'?'clean':'riverside';if(localStorage.getItem('jing-terrain-map')==='vector')localStorage.setItem('jing-terrain-map','riverside')}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['regal','jade','street'].includes(savedSkin)?'mascot':['serif','sans','playful','mascot','benteng'].includes(savedSkin)?savedSkin:'playful';if(['regal','jade','street'].includes(savedSkin))localStorage.setItem('jing-xiangqi-skin','mascot')}catch{};const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null,resignedSide=null,pendingResign=null;let last=null;let terrainMap='riverside';try{terrainMap=localStorage.getItem('jing-terrain-map')==='clean'?'clean':'riverside';if(localStorage.getItem('jing-terrain-map')==='vector')localStorage.setItem('jing-terrain-map','riverside')}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['regal','jade','street'].includes(savedSkin)?'mascot':['serif','sans','playful','mascot','benteng'].includes(savedSkin)?savedSkin:'playful';if(['regal','jade','street'].includes(savedSkin))localStorage.setItem('jing-xiangqi-skin','mascot')}catch{};const NS='http://www.w3.org/2000/svg';
 function node(tag,attrs={},parent=$('board')){let n=document.createElementNS(NS,tag);for(let k in attrs)n.setAttribute(tag==='image'&&k==='href'&&parent.closest('.piece-artwork')?'data-art-src':k,attrs[k]);parent.append(n);return n;}function text(content,attrs,parent){let n=node('text',attrs,parent);n.textContent=content;return n;}
 
 // A complete, interactive board never depends on any image request.
@@ -205,7 +205,7 @@ if(skin==='playful'&&terrainMap==='clean'){
 if(last&&pageView==='game')for(let p of [[last.x,last.y],[last.X,last.Y]]){let [x,y]=pos(...p);node('rect',{x:x-26,y:y-26,width:52,height:52,rx:10,fill:'#a3916244',stroke:'#a3916266','stroke-width':.8});}
 for(let y=0;y<10;y++)for(let x=0;x<9;x++){let p=visualBoard[y][x];if(!p)continue;let [cx,cy]=pos(x,y),sel=selected&&selected.x===x&&selected.y===y;let g=node('g',{class:'piece jade-piece',transform:`translate(${cx} ${cy})`,role:'button',tabindex:'0','aria-label':(p[0]==='r'?'红':'黑')+XQ.names[p[0]][p[1]]+` ${x+1}列${y+1}行`});if(sel)node('rect',{x:-26,y:-26,width:52,height:52,rx:11,fill:'#b6a78325',stroke:'#9a8b6b','stroke-width':1},g);paintPiece(g,p);node('circle',{r:27,fill:'transparent','pointer-events':'all'},g);g.onclick=e=>{e.stopPropagation();click(x,y)};g.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();click(x,y)}};}
 if(selected)for(let m of legal.filter(m=>m.x===selected.x&&m.y===selected.y)){let [cx,cy]=pos(m.X,m.Y);let target=node('circle',{cx,cy,r:board[m.Y][m.X]?25:7,fill:board[m.Y][m.X]?'none':'#7c8b6a',stroke:board[m.Y][m.X]?'#9a5142':'none','stroke-width':2,'pointer-events':'all',opacity:.8,role:'button',tabindex:'0','aria-label':`落子至 ${m.X+1}列${m.Y+1}行`,style:'cursor:pointer'});target.onclick=e=>{e.stopPropagation();click(m.X,m.Y)};target.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();click(m.X,m.Y)}};}
-document.querySelectorAll('[data-skin],[data-game-skin]').forEach(btn=>{let active=(btn.dataset.skin||btn.dataset.gameSkin)===skin;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});$('round').textContent=`第 ${String(Math.floor(history.length/2)+1).padStart(2,'0')} 回合`;$('moveCount').textContent=String(history.length).padStart(2,'0');$('history').innerHTML='';history.forEach((h,i)=>{let li=document.createElement('li');li.textContent=h.label;$('history').append(li)});$('undo').disabled=!history.length||busy;$('offerDraw').disabled=ended||busy||mode==='ai'&&turn!=='r';
+document.querySelectorAll('[data-skin],[data-game-skin]').forEach(btn=>{let active=(btn.dataset.skin||btn.dataset.gameSkin)===skin;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});$('round').textContent=`第 ${String(Math.floor(history.length/2)+1).padStart(2,'0')} 回合`;$('moveCount').textContent=String(history.length).padStart(2,'0');$('history').innerHTML='';history.forEach((h,i)=>{let li=document.createElement('li');li.textContent=h.label;$('history').append(li)});$('undo').disabled=!history.length||busy;$('offerDraw').disabled=ended||busy||mode==='ai'&&turn!=='r';$('resign').disabled=ended;
 const repeatedSide=['r','b'].find(side=>XQ.checkStreak(history,board,side)>=5);
 $('longCheckWarning').hidden=pageView!=='game'||ended||!repeatedSide;
 $('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));paintPiece(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));paintPiece(icon,turn+'k');}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));paintPiece(icon,turn+'k');}if(!ended){$('status').textContent=busy?'山隐正在凝思…':(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}}
@@ -221,7 +221,7 @@ function move(m){
  save();draw();
  if(ended)showResult();else{
   const streak=XQ.checkStreak(history,board,mover);
-  if(streak>=5&&(streak===5||streak%5===0)){
+  if(!(mode==='ai'&&mover==='b')&&streak>=5&&(streak===5||streak%5===0)){
    $('longCheckMessage').textContent=`${mover==='r'?'红方':'黑方'}已连续 ${streak} 回合将军，不能一直用相同的步骤进行长将，请变换走法。`;
    $('longCheckDialog').showModal();
   }
@@ -253,12 +253,18 @@ function acceptDraw(){
  $('drawOfferDialog').close();drawOffer=null;finishAgreedDraw();
 }
 function finishAgreedDraw(){
- epoch++;busy=false;drawAgreed=true;ended=true;selected=null;
+ epoch++;cancelComputer();busy=false;drawAgreed=true;resignedSide=null;ended=true;selected=null;
  $('status').textContent='和棋 · 双方同意';$('hint').textContent='双方已同意和棋，本局结束';save();draw();showResult();
 }
-function declineDraw(){const wasOffer=drawOffer?.phase==='respond';drawOffer=null;$('drawOfferDialog').close();if(wasOffer)toast('对方未同意和棋，继续对弈');}
+function declineDraw(){
+ const offer=drawOffer;drawOffer=null;$('drawOfferDialog').close();
+ if(offer?.reason==='long-check'){
+  if(offer.alternative){rememberAI(aiPositionKey(),offer.alternative);move(offer.alternative);toast('你未同意和棋，电脑已改走非将军招法');}
+  else finishResignation('b','电脑无法停止长将，认输');
+ }else if(offer?.phase==='respond')toast('对方未同意和棋，继续对弈');
+}
 $('offerDraw').onclick=offerDraw;$('acceptDraw').onclick=acceptDraw;$('declineDraw').onclick=declineDraw;
-$('drawOfferDialog').addEventListener('cancel',()=>{drawOffer=null});
+$('drawOfferDialog').addEventListener('cancel',event=>{if(drawOffer?.reason==='long-check'){event.preventDefault();declineDraw();}else drawOffer=null;});
 $('closeLongCheck').onclick=()=>{$('longCheckDialog').close();computer()};
 $('longCheckDialog').addEventListener('close',()=>computer());
 
@@ -275,10 +281,10 @@ function rememberAI(position,m){
 }
 function cancelComputer(){if(aiWorker){aiWorker.terminate();aiWorker=null;}}
 function computer(){
- if($('longCheckDialog').open||$('drawOfferDialog').open||pageView!=='game'||busy||mode!=='ai'||turn!=='b'||ended)return;
+ if($('resignDialog').open||$('longCheckDialog').open||$('drawOfferDialog').open||pageView!=='game'||busy||mode!=='ai'||turn!=='b'||ended)return;
  busy=true;draw();const e=epoch,level=Number($('level').value),position=aiPositionKey();
  const context={style:aiStyle,recent:Array.isArray(aiRecent[position])?aiRecent[position]:[]};
- const finish=m=>{if(e!==epoch)return;cancelComputer();busy=false;rememberAI(position,m);if(m)move(m);else draw();};
+ const finish=m=>{if(e!==epoch)return;cancelComputer();busy=false;if(m&&proposeLongCheckDraw(m))return;rememberAI(position,m);if(m)move(m);else draw();};
  const fallback=()=>{cancelComputer();setTimeout(()=>{if(e!==epoch)return;finish(XQ.ai(board,Math.min(level,3),Math.random,context));},30);};
  setTimeout(()=>{
   if(e!==epoch)return;
@@ -291,12 +297,48 @@ function computer(){
  },180);
 }
 
-function save(){try{localStorage.setItem('jing-xiangqi-v1',JSON.stringify({board,turn,history,mode,flipped,last,ended,drawAgreed,level:$('level').value,status:$('status').textContent,hint:$('hint').textContent}));}catch{$('saveStatus').textContent='当前浏览器无法保存棋局'}}
-function reset(){aiStyle=['active','solid','flank'][Math.floor(Math.random()*3)];drawAgreed=false;drawOffer=null;for(const id of ['drawOfferDialog','longCheckDialog'])if($(id).open)$(id).close();if($('resultDialog').open)$('resultDialog').close();epoch++;cancelComputer();busy=false;board=XQ.initial();turn='r';selected=null;history=[];ended=false;last=null;legal=XQ.moves(board,turn);save();draw()}
+function proposeLongCheckDraw(candidate){
+ if(XQ.checkStreak(history,board,'b')<5||!XQ.check(XQ.play(board,candidate),'r'))return false;
+ // Refusing the proposal must never allow a sixth consecutive checking move.
+ const quiet=legal.filter(m=>!XQ.check(XQ.play(board,m),'r'));
+ const value={k:100000,r:900,c:450,h:400,e:200,a:200,p:100};
+ function quietScore(m){
+  const after=XQ.play(board,m);let material=0,replyRisk=0;
+  for(const row of after)for(const piece of row)if(piece)material+=(piece[0]==='b'?1:-1)*value[piece[1]];
+  for(const reply of XQ.moves(after,'r')){const victim=after[reply.Y][reply.X];if(victim?.[0]==='b')replyRisk=Math.max(replyRisk,value[victim[1]]);}
+  return material-replyRisk;
+ }
+ const ranked=quiet.map(m=>({m,score:quietScore(m)})).sort((a,b)=>b.score-a.score);
+ drawOffer={side:'b',phase:'respond',reason:'long-check',alternative:ranked[0]?.m||null};
+ $('drawOfferTitle').textContent='电脑提出和棋';
+ $('drawOfferMessage').textContent=ranked.length?'电脑已连续将军5轮，不能继续长将。是否同意和棋？拒绝后，电脑将改走非将军招法。':'电脑已连续将军5轮，且没有可走的非将军招法。是否同意和棋？拒绝后，电脑将认输。';
+ $('acceptDraw').textContent='同意和棋';$('declineDraw').textContent='拒绝和棋';
+ draw();$('drawOfferDialog').showModal();return true;
+}
+function requestResignation(){
+ if(pageView!=='game'||ended)return;
+ pendingResign=mode==='ai'?'r':turn;epoch++;cancelComputer();busy=false;draw();
+ $('resignTitle').textContent=(pendingResign==='r'?'红方':'黑方')+'确认认输？';
+ $('resignDialog').showModal();
+}
+function cancelResignation(){pendingResign=null;$('resignDialog').close();computer();}
+function finishResignation(side,reason){
+ epoch++;cancelComputer();busy=false;ended=true;drawAgreed=false;drawOffer=null;resignedSide=side;pendingResign=null;selected=null;
+ for(const id of ['resignDialog','drawOfferDialog','longCheckDialog'])if($(id).open)$(id).close();
+ $('status').textContent=side==='r'?'黑方获胜':'红方获胜';
+ $('hint').textContent=reason||(side==='r'?'红方认输':'黑方认输');save();draw();showResult();
+}
+$('resign').onclick=requestResignation;
+$('confirmResign').onclick=()=>{if(pendingResign)finishResignation(pendingResign)};
+$('cancelResign').onclick=cancelResignation;
+$('resignDialog').addEventListener('cancel',event=>{event.preventDefault();cancelResignation()});
+
+function save(){try{localStorage.setItem('jing-xiangqi-v1',JSON.stringify({board,turn,history,mode,flipped,last,ended,drawAgreed,resignedSide,level:$('level').value,status:$('status').textContent,hint:$('hint').textContent}));}catch{$('saveStatus').textContent='当前浏览器无法保存棋局'}}
+function reset(){aiStyle=['active','solid','flank'][Math.floor(Math.random()*3)];drawAgreed=false;drawOffer=null;resignedSide=null;pendingResign=null;for(const id of ['drawOfferDialog','longCheckDialog','resignDialog'])if($(id).open)$(id).close();if($('resultDialog').open)$('resultDialog').close();epoch++;cancelComputer();busy=false;board=XQ.initial();turn='r';selected=null;history=[];ended=false;last=null;legal=XQ.moves(board,turn);save();draw()}
 function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('toast').style.opacity=0,2200)}
-$('undo').onclick=()=>{if(!history.length||busy)return;epoch++;let n=mode==='ai'&&turn==='r'&&history.length>1?2:1;while(n--&&history.length){let h=history.pop();board=h.board;turn=h.turn;last=h.last;}ended=false;drawAgreed=false;selected=null;legal=XQ.moves(board,turn);save();draw();toast('棋局已退回上一步')};$('new').onclick=startNewGame;function showConfirm(fn){let d=document.createElement('dialog');d.innerHTML='<div class="eyebrow">A NEW BEGINNING</div><h2>重新开启一局？</h2><p>当前棋局将被新的棋局替换。</p><button class="primary">确认新局 ↗</button><button style="width:100%;padding:18px">继续此局</button>';document.body.append(d);let bs=d.querySelectorAll('button');bs[0].onclick=()=>{d.close();d.remove();fn()};bs[1].onclick=()=>{d.close();d.remove()};d.showModal()}
+$('undo').onclick=()=>{if(!history.length||busy)return;epoch++;let n=mode==='ai'&&turn==='r'&&history.length>1?2:1;while(n--&&history.length){let h=history.pop();board=h.board;turn=h.turn;last=h.last;}ended=false;drawAgreed=false;resignedSide=null;pendingResign=null;selected=null;legal=XQ.moves(board,turn);save();draw();toast('棋局已退回上一步')};$('new').onclick=startNewGame;function showConfirm(fn){let d=document.createElement('dialog');d.innerHTML='<div class="eyebrow">A NEW BEGINNING</div><h2>重新开启一局？</h2><p>当前棋局将被新的棋局替换。</p><button class="primary">确认新局 ↗</button><button style="width:100%;padding:18px">继续此局</button>';document.body.append(d);let bs=d.querySelectorAll('button');bs[0].onclick=()=>{d.close();d.remove();fn()};bs[1].onclick=()=>{d.close();d.remove();navigate('game')};d.showModal()}
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{draftMode=b.dataset.mode;draw()});$('flip').onclick=()=>{flipped=!flipped;draw();save()};$('sound').onclick=()=>{muted=!muted;$('sound').textContent=muted?'♪　音效关':'♪　音效开';audio()};$('help').onclick=()=>$('dialog').showModal();$('close').onclick=$('understood').onclick=()=>$('dialog').close();
-try{let s=JSON.parse(localStorage.getItem('jing-xiangqi-v1'));if(s&&s.board.length===10){({board,turn,history,mode,flipped,last,ended}=s);drawAgreed=s.drawAgreed===true;if(ended&&s.status?.includes('和棋')&&!drawAgreed)ended=false;if(s.level)$('level').value=s.level;if(ended){$('status').textContent=s.status;$('hint').textContent=s.hint}}}catch{}legal=XQ.moves(board,turn);
+try{let s=JSON.parse(localStorage.getItem('jing-xiangqi-v1'));if(s&&s.board.length===10){({board,turn,history,mode,flipped,last,ended}=s);drawAgreed=s.drawAgreed===true;resignedSide=['r','b'].includes(s.resignedSide)?s.resignedSide:null;if(ended&&s.status?.includes('和棋')&&!drawAgreed)ended=false;if(s.level)$('level').value=s.level;if(ended){$('status').textContent=s.status;$('hint').textContent=s.hint}}}catch{}legal=XQ.moves(board,turn);
 
 // Immersive view hides all surrounding UI; the board remains fully interactive.
 let immersive=false;
@@ -309,7 +351,7 @@ let immersionTouch=0;$('board').addEventListener('touchend',e=>{if(!immersive||e
 function showResult(){
  if(pageView!=='game'||!ended||$('resultDialog').open)return;
  const drawGame=drawAgreed;
- const redWon=turn==='b';
+ const redWon=resignedSide?resignedSide==='b':turn==='b';
  $('resultTitle').textContent=drawGame?'和棋 · 双方同意':redWon?'红方获胜':'黑方获胜';
  $('resultSeal').textContent=drawGame?'和':redWon?'帥':'將';
  $('resultSeal').style.color=drawGame?'#84775e':redWon?'#933f36':'#414a40';
@@ -333,7 +375,7 @@ function applyView(view){
   if(immersive)setImmersive(false);
   epoch++;cancelComputer();busy=false;selected=null;
   if($('resultDialog').open)$('resultDialog').close();
-  drawOffer=null;for(const id of ['drawOfferDialog','longCheckDialog'])if($(id).open)$(id).close();
+  drawOffer=null;pendingResign=null;for(const id of ['drawOfferDialog','longCheckDialog','resignDialog'])if($(id).open)$(id).close();
   $('homePreview').prepend(boardSection);draftMode=mode;
  }else{$('gameStage').append(boardSection)}
  document.body.dataset.page=pageView;
@@ -380,5 +422,6 @@ document.querySelectorAll('.home-panel [data-skin]').forEach(button=>{
 
 // Persist successful artwork downloads for later visits, without prefetching other skins.
 if(typeof navigator!=='undefined'&&'serviceWorker' in navigator){setTimeout(()=>navigator.serviceWorker.register('./sw.js').catch(()=>{}),1000);}
+
 
 
