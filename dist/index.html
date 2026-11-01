@@ -47,7 +47,57 @@
 <dialog id="longCheckDialog" aria-labelledby="longCheckTitle" aria-describedby="longCheckMessage"><div class="eyebrow">PLEASE CHANGE YOUR MOVE</div><h2 id="longCheckTitle">请勿反复长将</h2><p id="longCheckMessage"></p><p class="muted">本局继续，不会自动判为和棋。</p><button id="closeLongCheck" class="primary" autofocus>知道了，继续对弈</button></dialog>
 <dialog id="resultDialog" aria-labelledby="resultTitle" aria-describedby="resultReason"><div class="eyebrow">THE GAME IS COMPLETE</div><div id="resultSeal" aria-hidden="true">勝</div><h2 id="resultTitle"></h2><p id="resultReason"></p><p class="result-note">此局已定，感谢对弈。</p><div class="result-actions"><button class="primary" id="playAgain" autofocus>再来一局 <span>↗</span></button><button id="finishGame">结束对局</button></div></dialog><script defer src="engine.js?v=variety31"></script><script defer src="terrain.js?v=fast-v1"></script><script defer src="app.js?v=skin-order-v7"></script><script defer src="lessons.js?v=academy18"></script><script defer src="academy.js?v=academy18"></script>
 
+<script>
+// Skin-scoped vector icons; native controls and game handlers remain intact.
+(()=>{
+const ink='#302f2a',orange='#e98a35',ivory='#fffaf0';
+const svg=body=>`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none" stroke="${ink}" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">${body}</svg>`;
+const art={
+undo:`<path d="M13 5 6 10l7 3M7 10h9c6 0 8 4 6 7"/><ellipse cx="20" cy="25" rx="8" ry="3" fill="${ivory}"/><path d="M12 22v3c0 4 16 4 16 0v-3" fill="${ivory}"/><ellipse cx="20" cy="22" rx="8" ry="3" fill="${ivory}"/><path d="M17 22h6" stroke="${orange}"/>`,
+flip:`<path d="M4 12C5 3 22 2 26 9m-1-5 1 5-5-1"/><path d="M3 22v3c0 5 13 5 13 0v-3" fill="${orange}"/><ellipse cx="9.5" cy="22" rx="6.5" ry="3" fill="${ivory}"/><path d="M18 16v3c0 5 12 5 12 0v-3" fill="${orange}"/><ellipse cx="24" cy="16" rx="6" ry="3" fill="${orange}"/><path d="M7 22h5m10-6h4" stroke-width="1"/>`,
+sound:`<path d="m10 21 1 7 4-1-2-6" fill="${orange}"/><path d="M9 11H6c-5 0-5 10 0 10h3" fill="${ivory}"/><path d="m9 11 11-5v20L9 21Z" fill="${ivory}"/><ellipse cx="20" cy="16" rx="3" ry="10" fill="${ivory}"/><path d="M19 12v8" stroke="${orange}"/>`,
+immersive:`<rect x="3" y="5" width="25" height="23" rx="3" fill="${ivory}"/><path d="M5 24v1c0 1 .5 1 2 1h17" stroke="${orange}" stroke-width="2.2"/><path d="m18 14 10-10m-6 0h6v6" stroke="${ink}"/><path d="m13 18-7 7m0-4v4h4" stroke="${orange}"/>`,
+offerDraw:`<path d="m2 13 5-8 5 3-5 9Zm23-8 5 8-5 4-5-9Z" fill="${orange}"/><path d="m8 15 5-7 4 1 5 6 3 3-3 3-6 7-4-2-7-7Z" fill="${ivory}"/><path d="m12 11 4-3 5 1 4 7-4 4-6-6-2 2c-3 2-4-1-2-3l3-3M9 19l6 6m-3-9 7 7m-3-10 7 7M7 21l3-3m0 6 3-3m0 6 3-3"/>`,
+resign:`<path d="M13 25 17 3"/><path d="M17 5c5-5 9 3 14-1l-2 12c-5 4-9-4-14 0Z" fill="#fffef9"/><path d="M19 9c3-1 5 2 8 1" stroke="#d3c5ac" stroke-width="1"/><path d="m3 23 4-1 3 8-5 1Z" fill="${orange}"/><path d="m8 23 4-4c2-2 4-1 3 1l-1 2 4-1c3 0 3 2 0 3 3 0 3 2-1 3 2 1 1 3-3 3l-4-1Z" fill="${ivory}"/>`,
+more:`<circle cx="7" cy="17" r="2.8" fill="${ink}" stroke="none"/><circle cx="16" cy="16" r="2.8" fill="${ink}" stroke="none"/><circle cx="25" cy="14" r="2.8" fill="${orange}" stroke="none"/>`
+};
+const style=document.createElement('style');style.textContent=`
+.mq-icon,.mq-label{display:none!important}
+.mq-original{display:contents;font:inherit!important;color:inherit!important}
+.game-toolbar>button>.mq-original>span{font:17px Arial;color:#93866e}
+body[data-skin="benteng"] .mq-original{display:none!important}
+body[data-skin="benteng"] .game-toolbar .mq-icon{display:inline-flex!important;align-items:center;justify-content:center;width:27px;height:30px;flex:0 0 27px;line-height:0}
+body[data-skin="benteng"] .mq-icon svg{width:100%;height:100%;overflow:visible}
+body[data-skin="benteng"] .game-toolbar .mq-label{display:inline!important;font:inherit;color:inherit}
+body[data-skin="benteng"] .game-more>summary>.mq-label{font-size:12px}
+@media(max-width:760px){body[data-skin="benteng"] .game-more>summary>.mq-label{font-size:10px}body[data-skin="benteng"] .game-toolbar .mq-icon{width:21px;height:24px;flex-basis:21px}}
+`;document.head.append(style);
+function decorate(el,key,label){
+ if(!el)return;
+ const muted=key==='sound'&&(el.textContent.includes('关'));
+ const version=key==='sound'?String(muted):key;
+ if(el.querySelector('.mq-icon')&&el.dataset.mqVersion===version)return;
+ // app.js updates sound with textContent; preserve that source for other skins.
+ let original=el.querySelector('.mq-original');
+ if(!original){original=document.createElement('span');original.className='mq-original';original.append(...el.childNodes);el.append(original);}
+ el.querySelectorAll(':scope>.mq-icon,:scope>.mq-label').forEach(n=>n.remove());
+ const icon=document.createElement('span');icon.className='mq-icon';icon.setAttribute('aria-hidden','true');
+ const soundMark=muted?`<path d="m26 12 5 7m0-7-5 7" stroke="${orange}" stroke-width="2"/>`:`<path d="M26 10q7 6 0 12m-1-9q3 3 0 6" stroke="${orange}"/>`;
+ icon.innerHTML=svg(art[key]+(key==='sound'?soundMark:''));
+ const text=document.createElement('span');text.className='mq-label';text.textContent=key==='sound'?(muted?'音效关':'音效开'):label;
+ el.prepend(icon,text);el.dataset.mqVersion=version;
+}
+function install(){
+ for(const [key,label]of Object.entries({undo:'悔棋',flip:'翻转',sound:'音效关',immersive:'沉浸模式',offerDraw:'求和',resign:'认输'}))decorate(document.getElementById(key),key,label);
+ decorate(document.querySelector('#gameMore>summary'),'more','更多');
+ const sound=document.getElementById('sound');if(sound)new MutationObserver(()=>decorate(sound,'sound','音效关')).observe(sound,{childList:true});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',install,{once:true});else install();
+})();
+
+</script>
 </body></html>
+
 
 
 
