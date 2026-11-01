@@ -383,7 +383,7 @@ function applyView(view){
  $('learnPage').hidden=pageView!=='learn';$('settingsPage').hidden=pageView!=='settings';syncSoundSetting();
  $('continueGame').hidden=!history.length||ended;
  $('gameMore').open=false;
- draw();window.scrollTo(0,0);
+ draw();window.scrollTo(0,0);scheduleHomeSkinFold();
  if(pageView==='game'){if(ended)showResult();else computer()}
 }
 function startNewGame(){
@@ -456,3 +456,26 @@ syncSoundSetting();
 $('soundSetting').addEventListener('change',()=>{setSoundEnabled($('soundSetting').checked);if(!muted)audio()});
 $('openSettings').onclick=()=>navigate('settings');
 $('backSettings').onclick=()=>navigate('home');
+
+// Keep the skin heading at the first-screen edge; thumbnails follow on scroll.
+function updateHomeSkinFold(){
+ const collection=document.querySelector('.home-collection');
+ if(!collection||typeof window.matchMedia!=='function')return;
+ collection.style.removeProperty('--skin-fold-space');
+ if(pageView!=='home'||!window.matchMedia('(max-width:760px)').matches)return;
+ const heading=collection.querySelector('.picker-title');if(!heading)return;
+ const rect=heading.getBoundingClientRect(),top=rect.top+(window.scrollY||0);
+ const viewport=document.documentElement.clientHeight||window.innerHeight;
+ const space=Math.max(0,viewport-rect.height-12-top);
+ collection.style.setProperty('--skin-fold-space',space+'px');
+}
+function scheduleHomeSkinFold(){
+ if(typeof requestAnimationFrame==='function')requestAnimationFrame(updateHomeSkinFold);
+}
+window.addEventListener('resize',scheduleHomeSkinFold);
+if(typeof ResizeObserver==='function'){
+ const homeFoldObserver=new ResizeObserver(scheduleHomeSkinFold);
+ for(const item of document.querySelectorAll('.home-header,.home-actions,#homePreview'))homeFoldObserver.observe(item);
+}
+if(document.fonts?.ready)document.fonts.ready.then(scheduleHomeSkinFold);
+scheduleHomeSkinFold();
