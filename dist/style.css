@@ -271,3 +271,80 @@ body[data-page="home"] .level-options button:focus-visible{outline:2px solid #c4
  body[data-page="home"] .level-options button{min-height:91px;padding:4px 2px 5px}
  body[data-page="home"] .home-preview .game{width:min(100%,calc(29svh*.8125),290px)}
 }
+
+
+/* Refined home: board and start action lead; choices stay compact. */
+body[data-page="home"] .home-header,body[data-page="settings"] .home-header{max-width:1400px;height:76px;padding:0 40px}
+.settings-entry{display:flex;align-items:center;gap:7px;min-height:40px;padding:7px 10px;color:#73766a;font:500 12px/1.4 "Microsoft YaHei","PingFang SC",sans-serif;letter-spacing:0;border-radius:10px}
+.settings-entry svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.4;stroke-linecap:round;stroke-linejoin:round}
+.settings-entry:hover{background:#e9e7dd;color:#32392d}
+body[data-page="home"] main.home-page{max-width:1400px;grid-template-columns:minmax(0,1fr) 320px;gap:48px;padding:8px 40px 20px;min-height:calc(100svh - 130px);align-items:center}
+body[data-page="home"] .home-preview{position:relative;padding:0 85px 0 0;align-self:center;min-width:0}
+body[data-page="home"] .home-preview .game{width:min(100%,calc((100svh - 155px)*.8125));max-width:690px}
+body[data-page="home"] .home-mascot{position:absolute;right:-8px;bottom:5%;width:clamp(95px,11vw,155px);height:auto;pointer-events:none;z-index:2;object-fit:contain}
+body[data-page="home"] .home-panel{width:100%;align-self:center}
+body[data-page="home"] .home-panel .home-actions #new{display:flex;align-items:center;justify-content:space-between;min-height:58px;padding:17px 22px;font:600 18px/1.3 "Microsoft YaHei","PingFang SC",sans-serif;letter-spacing:1px;background:#e78536;color:#fffdf7;border:1px solid #d97c31;border-radius:14px;box-shadow:0 6px 18px -9px #a05628aa}
+body[data-page="home"] .home-panel .home-actions #new:hover{background:#d97b2f;box-shadow:0 7px 19px -8px #a0562899}
+body[data-page="home"] .home-panel .home-actions #new>span{font:400 23px/1 Arial}
+body[data-page="home"] .home-panel .continue-game{padding:10px 5px;margin:2px 0 0;font-size:12px}
+body[data-page="home"] .home-panel .home-actions .settings{margin:20px 0 0;gap:7px;grid-template-columns:1fr}
+body[data-page="home"] .home-panel .settings>label,body[data-page="home"] .level-heading{font:500 11px/1.5 "Microsoft YaHei","PingFang SC",sans-serif;color:#8a8b7e;letter-spacing:0}
+body[data-page="home"] .home-panel .segmented{padding:2px;border-radius:8px}
+body[data-page="home"] .home-panel .segmented button{font-size:12px;padding:8px 6px;border-radius:6px}
+body[data-page="home"] .home-panel .mountain-levels{gap:4px;margin:6px 0 0}
+body[data-page="home"] .level-options{gap:4px}
+body[data-page="home"] .level-options button{min-height:65px;height:65px;padding:4px 2px;gap:0;border-radius:9px;box-shadow:none}
+body[data-page="home"] .level-options button svg{height:30px;max-width:40px}
+body[data-page="home"] .level-number{font-size:9px;line-height:1.2}
+body[data-page="home"] .level-name{font:500 10px/1.5 "Microsoft YaHei","PingFang SC",sans-serif}
+body[data-page="home"] .home-collection{margin-top:20px;padding-top:16px;border-top:1px solid #dedccf}
+body[data-page="home"] .picker-title{font-size:11px;font-weight:500;color:#8a8b7e;margin:0 0 7px}
+body[data-page="home"] .home-panel .skin-options{grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+body[data-page="home"] .home-panel .skin-options button{height:67px;min-height:67px;padding:5px 1px;gap:3px;border-radius:9px}
+body[data-page="home"] .home-panel .skin-options .skin-sample{width:32px;height:32px;flex-basis:32px}
+body[data-page="home"] .home-panel .skin-sample svg{width:32px;height:32px}
+body[data-page="home"] .home-panel .skin-options .skin-name{font-size:10px;line-height:1.4;letter-spacing:0}
+body[data-page="home"] .home-panel .skin-options i{right:3px;top:2px;font-size:8px}
+body[data-page="home"] .home-panel .skin-settings{margin:0}
+body[data-page="home"] .academy-entry{margin-top:15px;padding:10px 0;background:none;border:0;border-radius:0;box-shadow:none}
+body[data-page="home"] .academy-entry strong{font-size:12px;font-weight:500}
+body[data-page="home"] .academy-seal{width:24px;height:24px;font-size:16px}
+body[data-page="home"] .home-footer{max-width:1320px;padding:10px 40px;font-size:9px}
+/* A focused settings page, with persisted sound and existing board preferences. */
+body[data-page="settings"] .home-footer{display:none}
+main.settings-page{display:block;max-width:620px;margin:15px auto 60px;padding:0 24px;min-height:60svh;font-family:"Microsoft YaHei","PingFang SC",sans-serif}
+.settings-top{margin-bottom:28px}
+.settings-page h1{font-size:27px;line-height:1.4;letter-spacing:0;font-weight:600;margin:0 0 24px}
+.preferences-card{border:1px solid #e0dccf;border-radius:18px;background:#faf8f1;padding:0 22px}
+.preference-row{display:flex;align-items:center;justify-content:space-between;gap:20px;width:100%;text-align:left;padding:22px 0}
+.preference-row strong{display:block;font-size:14px;font-weight:500}
+.preference-row small{display:block;font-size:12px;color:#949486;margin-top:6px}
+.preference-row input{appearance:none;width:42px;height:25px;flex-shrink:0;margin:0;border:1px solid #d7d3c6;border-radius:20px;background:#d5d4c9;cursor:pointer;position:relative;transition:background .15s}
+.preference-row input::before{content:"";position:absolute;width:19px;height:19px;border-radius:50%;top:2px;left:2px;background:#fffdf7;box-shadow:0 1px 3px #0002;transition:transform .15s}
+.preference-row input:checked{background:#e78536;border-color:#e78536}
+.preference-row input:checked::before{transform:translateX(17px)}
+.preference-row input:focus-visible{outline:2px solid #a96730;outline-offset:4px}
+.preference-scene{padding:22px 0;border-top:1px solid #e4e0d6;border-bottom:1px solid #e4e0d6}
+.settings-page .terrain-picker{margin:0}
+.settings-page .terrain-picker>small{font-size:14px;color:#393d36;margin-bottom:12px;display:block}
+.settings-page .terrain-picker button{padding:10px 14px;font-size:12px}
+.preference-help{cursor:pointer;color:inherit;font:inherit}
+.preference-help:hover strong{color:#bb702f}
+@media(max-width:1100px) and (min-width:901px){
+ body[data-page="home"] main.home-page{gap:28px;padding-left:28px;padding-right:28px;grid-template-columns:minmax(0,1fr) 300px}
+ body[data-page="home"] .home-preview{padding-right:55px}
+ body[data-page="home"] .home-mascot{width:112px;right:-12px}
+}
+@media(max-width:900px){
+ body[data-page="home"] .home-header,body[data-page="settings"] .home-header{height:62px;padding:0 20px}
+ body[data-page="home"] main.home-page{display:flex;gap:16px;max-width:500px;padding:0 20px 20px;min-height:0}
+ body[data-page="home"] .home-preview{position:relative;top:auto;padding:0 48px 0 0}
+ body[data-page="home"] .home-preview .game{width:min(100%,calc((100svh - 340px)*.8125));max-width:370px}
+ body[data-page="home"] .home-mascot{width:clamp(70px,22vw,100px);right:-5px;bottom:4%}
+ body[data-page="home"] .home-panel .home-actions #new{min-height:54px;padding:15px 20px;font-size:17px}
+ body[data-page="home"] .home-panel .home-actions .settings{margin-top:15px}
+ body[data-page="home"] .home-collection{margin-top:16px;padding-top:12px}
+ body[data-page="home"] .home-panel .skin-options{grid-template-columns:repeat(5,minmax(0,1fr))}
+ body[data-page="home"] .home-footer{padding:4px 0 15px;margin:0 20px}
+ main.settings-page{margin-top:14px;padding:0 20px}
+}

@@ -337,7 +337,7 @@ function save(){try{localStorage.setItem('jing-xiangqi-v1',JSON.stringify({board
 function reset(){aiStyle=['active','solid','flank'][Math.floor(Math.random()*3)];drawAgreed=false;drawOffer=null;resignedSide=null;pendingResign=null;for(const id of ['drawOfferDialog','longCheckDialog','resignDialog'])if($(id).open)$(id).close();if($('resultDialog').open)$('resultDialog').close();epoch++;cancelComputer();busy=false;board=XQ.initial();turn='r';selected=null;history=[];ended=false;last=null;legal=XQ.moves(board,turn);save();draw()}
 function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('toast').style.opacity=0,2200)}
 $('undo').onclick=()=>{if(!history.length||busy)return;epoch++;let n=mode==='ai'&&turn==='r'&&history.length>1?2:1;while(n--&&history.length){let h=history.pop();board=h.board;turn=h.turn;last=h.last;}ended=false;drawAgreed=false;resignedSide=null;pendingResign=null;selected=null;legal=XQ.moves(board,turn);save();draw();toast('棋局已退回上一步')};$('new').onclick=startNewGame;function showConfirm(fn){let d=document.createElement('dialog');d.innerHTML='<div class="eyebrow">A NEW BEGINNING</div><h2>重新开启一局？</h2><p>当前棋局将被新的棋局替换。</p><button class="primary">确认新局 ↗</button><button style="width:100%;padding:18px">继续此局</button>';document.body.append(d);let bs=d.querySelectorAll('button');bs[0].onclick=()=>{d.close();d.remove();fn()};bs[1].onclick=()=>{d.close();d.remove();navigate('game')};d.showModal()}
-document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{draftMode=b.dataset.mode;draw()});$('flip').onclick=()=>{flipped=!flipped;draw();save()};$('sound').onclick=()=>{muted=!muted;$('sound').textContent=muted?'♪　音效关':'♪　音效开';audio()};$('help').onclick=()=>$('dialog').showModal();$('close').onclick=$('understood').onclick=()=>$('dialog').close();
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{draftMode=b.dataset.mode;draw()});$('flip').onclick=()=>{flipped=!flipped;draw();save()};$('sound').onclick=()=>{setSoundEnabled(muted);audio()};$('help').onclick=()=>$('dialog').showModal();$('close').onclick=$('understood').onclick=()=>$('dialog').close();
 try{let s=JSON.parse(localStorage.getItem('jing-xiangqi-v1'));if(s&&s.board.length===10){({board,turn,history,mode,flipped,last,ended}=s);drawAgreed=s.drawAgreed===true;resignedSide=['r','b'].includes(s.resignedSide)?s.resignedSide:null;if(ended&&s.status?.includes('和棋')&&!drawAgreed)ended=false;if(s.level)$('level').value=s.level;if(ended){$('status').textContent=s.status;$('hint').textContent=s.hint}}}catch{}legal=XQ.moves(board,turn);
 
 // Immersive view hides all surrounding UI; the board remains fully interactive.
@@ -370,7 +370,7 @@ $('resultDialog').addEventListener('cancel',e=>{e.preventDefault();finishGame()}
 const boardSection=document.querySelector('.game');
 function navigate(view){if(location.hash==='#'+view)applyView(view);else location.hash=view}
 function applyView(view){
- pageView=['game','learn'].includes(view)?view:'home';
+ pageView=['game','learn','settings'].includes(view)?view:'home';
  if(pageView!=='game'){
   if(immersive)setImmersive(false);
   epoch++;cancelComputer();busy=false;selected=null;
@@ -380,7 +380,7 @@ function applyView(view){
  }else{$('gameStage').append(boardSection)}
  document.body.dataset.page=pageView;
  $('homePage').hidden=pageView!=='home';$('gamePage').hidden=pageView!=='game';
- $('learnPage').hidden=pageView!=='learn';
+ $('learnPage').hidden=pageView!=='learn';$('settingsPage').hidden=pageView!=='settings';syncSoundSetting();
  $('continueGame').hidden=!history.length||ended;
  $('gameMore').open=false;
  draw();window.scrollTo(0,0);
@@ -395,8 +395,8 @@ $('backHome').onclick=()=>{save();navigate('home')};
 $('restartGame').onclick=()=>{const start=()=>{reset();$('gameMore').open=false};if(history.length&&!ended)showConfirm(start);else start()};
 document.querySelectorAll('[data-game-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.gameSkin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换皮肤');});
 $('helpGame').onclick=()=>{$('gameMore').open=false;$('dialog').showModal()};
-window.addEventListener('hashchange',()=>applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':'home'));
-draftMode=mode;applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':'home');
+window.addEventListener('hashchange',()=>applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':location.hash==='#settings'?'settings':'home'));
+draftMode=mode;applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':location.hash==='#settings'?'settings':'home');
 
 // Board changes are purely visual and preserve the current game.
 document.querySelectorAll('[data-map]').forEach(btn=>btn.onclick=()=>{terrainMap=btn.dataset.map;try{localStorage.setItem('jing-terrain-map',terrainMap)}catch{}draw();toast(terrainMap==='clean'?'已切换为素净棋盘':'已切换为柳岸行营');});
@@ -440,3 +440,19 @@ if(typeof navigator!=='undefined'&&'serviceWorker' in navigator){setTimeout(()=>
 
 
 
+
+
+// Settings is a separate page; preferences apply to both home and game.
+function syncSoundSetting(){
+ $('soundSetting').checked=!muted;
+ $('sound').textContent=muted?'♪　音效关':'♪　音效开';
+}
+function setSoundEnabled(enabled){
+ muted=!enabled;syncSoundSetting();
+ try{localStorage.setItem('miaoqi-sound',enabled?'on':'off')}catch{}
+}
+try{muted=localStorage.getItem('miaoqi-sound')!=='on'}catch{}
+syncSoundSetting();
+$('soundSetting').addEventListener('change',()=>{setSoundEnabled($('soundSetting').checked);if(!muted)audio()});
+$('openSettings').onclick=()=>navigate('settings');
+$('backSettings').onclick=()=>navigate('home');
