@@ -389,8 +389,7 @@ function applyView(view){
 }
 function startNewGame(){
  if(draftMode==='online'){window.MQOnline?.open();return}
- window.MQOnline?.suspend();
- const start=()=>{mode=draftMode;reset();navigate('game')};
+ const start=()=>{window.MQOnline?.suspend();mode=draftMode;reset();navigate('game')};
  if(history.length&&!ended)showConfirm(start);else start();
 }
 $('continueGame').onclick=()=>navigate('game');
