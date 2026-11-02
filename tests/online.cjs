@@ -6,7 +6,7 @@ let submitted=[],localMoves=0,allowed=false;
 const c=vm.createContext({window:{MQOnline:{canMove:()=>allowed,move:m=>submitted.push(m)}},board:XQ.initial(),turn:'r',legal:XQ.moves(XQ.initial(),'r'),selected:null,pageView:'game',mode:'online',busy:false,ended:false,draw(){},move(){localMoves++},computer(){},toast(){}});
 vm.runInContext(click,c);c.click(0,6);assert.equal(c.selected,null,'waiting/opponent turn cannot select a piece');allowed=true;c.click(0,6);c.click(0,5);assert.equal(submitted.length,1);assert.equal(localMoves,0,'online move must go to server before changing local board');assert.equal(c.board[6][0],'rp');
 const source=fs.readFileSync(require.resolve('../dist/online.js'),'utf8');
-const apply=source.slice(source.indexOf('function applyRoom(){'),source.indexOf('\nfunction render(){'));
+const apply=source.slice(source.indexOf('function applyRoom(){'),source.indexOf('\nlet preparation'));
 let replay=XQ.initial();const moves=[{x:0,y:6,X:0,Y:5,piece:'rp',captured:null},{x:0,y:3,X:0,Y:4,piece:'bp',captured:null}];for(const m of moves)replay=XQ.play(replay,m);
 Object.assign(c,{XQ,room:{board:replay,turn:'r',last:moves[1],moves,status:'playing',winner:null},active:true,history:[],drawAgreed:false,resignedSide:null});vm.runInContext(apply,c);c.applyRoom();assert.equal(c.history.length,2);assert.equal(c.history[0].board[6][0],'rp');assert.equal(c.history[1].board[5][0],'rp');assert.doesNotThrow(()=>XQ.checkStreak(c.history,c.board,'r'),'synced history supports long-check detection');assert.equal(c.board[4][0],'bp');
 console.log('Online entry, turn guard, server submission, board synchronization and replay history checks passed.');
@@ -35,3 +35,4 @@ let readyCallback;const bootstrap=vm.createContext({window:{},document:{readySta
  memory.box.querySelector('select').value='other@example.com';memory.box.querySelector('select').onchange();assert.equal(password.value,'','switching accounts clears the previous password');
  console.log('Invite link, confirm-only room creation, optimistic rollback, account selection and native password storage checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});
+

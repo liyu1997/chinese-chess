@@ -502,3 +502,7 @@ scheduleHomeSkinFold();
 
 
 
+
+
+// Controls are live only after all core handlers are installed.
+window.MQStartup?.ready();

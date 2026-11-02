@@ -17,7 +17,7 @@ const clockStyle=document.createElement('style');clockStyle.textContent='.mq-tim
 const invitation=new URL(location.href).searchParams.get('room');
 let pendingInvite=/^[A-Fa-f0-9]{8}$/.test(invitation||'')?invitation.toUpperCase():null;
 const style=document.createElement('style');style.textContent=`#onlineMode{opacity:1!important;cursor:pointer!important}.mq-auth{box-sizing:border-box;width:min(430px,calc(100vw - 32px));max-height:calc(100dvh - 36px);overflow:auto;border:0;border-radius:24px;padding:26px;background:#fffaf0;color:#302f2a;box-shadow:0 24px 80px #0003;font:14px Microsoft YaHei,system-ui}.mq-auth::backdrop{background:#0006}.mq-auth h2{margin:0 0 10px}.mq-auth p{color:#756d61;line-height:1.7;overflow-wrap:anywhere}.mq-auth input:not([type=checkbox]){box-sizing:border-box;width:100%;padding:14px;margin:6px 0;border:1px solid #ddd3c3;border-radius:12px;font:inherit}.mq-auth button{width:100%;padding:13px;margin-top:9px;border:0;border-radius:12px;font:inherit;font-weight:700;cursor:pointer}.mq-auth button:disabled{opacity:.5;cursor:wait}.mq-auth .main{background:#302f2a;color:white}.mq-auth .sub{background:#f1eadf}.mq-auth .err{color:#a33;min-height:20px}.mq-user{border:0;background:transparent;font:inherit;padding:10px;cursor:pointer;max-width:180px;overflow:hidden;text-overflow:ellipsis}.mq-room-bar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;font:13px Microsoft YaHei,system-ui;margin:0 0 14px}.mq-room-bar[hidden],.mq-room-bar button[hidden]{display:none}.mq-room-bar button{border:0;border-radius:10px;background:#eee8dd;padding:10px 14px;color:inherit;cursor:pointer;font:inherit}.mq-room-bar .ready{background:#302f2a;color:#fff}.mq-room-bar .seats{flex-basis:100%;line-height:1.8;color:#8a7d68}.mq-code-preview{font-size:28px;font-weight:700;letter-spacing:5px;text-align:center;padding:20px;background:#f1eadf;border-radius:14px;margin:15px 0}.mq-auth details{margin-top:15px}.mq-auth summary{cursor:pointer;color:#8a7d68}.mq-auth .invite-link{font-size:12px;letter-spacing:0;word-break:break-all}.mq-room-bar{width:min(100%,680px);flex-shrink:0}.mq-room-bar .room-title{overflow-wrap:anywhere}.mq-room-bar .seats{overflow-wrap:anywhere}body.immersive .mq-room-bar{display:none}@media(min-width:1100px) and (min-aspect-ratio:6/5){.mq-room-bar{grid-column:1;grid-row:1;align-self:start;justify-self:end;width:min(100%,220px);margin:250px 0 0;padding:0 6px;justify-content:flex-start;gap:10px}.mq-room-bar .room-title{flex-basis:100%}.mq-room-bar .seats{font-size:12px}}@media(max-width:1099px),(max-aspect-ratio:6/5){body[data-online="true"]:not(.immersive) .game-stage{width:min(100%,calc((100dvh - 235px)*.8125))}.mq-room-bar{padding:0 6px;margin-bottom:8px;font-size:12px}.mq-room-bar button{padding:8px 12px}.mq-room-bar .seats{font-size:11px}}`;document.head.append(style);
-async function api(path,data){const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);try{const r=await fetch(API+path,{credentials:'include',cache:'no-store',signal:controller.signal,...(data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})});let result;try{result=await r.json()}catch{throw Error('服务连接失败，请稍后重试')}if(!r.ok){const e=Error(result.error||'网络请求失败');e.status=r.status;throw e}return result}finally{clearTimeout(timeout)}}
+async function api(path,data,signal){const controller=new AbortController(),cancel=()=>controller.abort(),timeout=setTimeout(cancel,12000);if(signal){if(signal.aborted)cancel();else signal.addEventListener('abort',cancel,{once:true})}try{const r=await fetch(API+path,{credentials:'include',cache:'no-store',signal:controller.signal,...(data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})});let result;try{result=await r.json()}catch{throw Error('服务连接失败，请稍后重试')}if(!r.ok){const e=Error(result.error||'网络请求失败');e.status=r.status;throw e}return result}finally{clearTimeout(timeout);signal?.removeEventListener('abort',cancel)}}
 function modal(title,html){dialog?.close();dialog?.remove();const d=document.createElement('dialog');d.className='mq-auth';d.innerHTML='<h2></h2>'+html;d.querySelector('h2').textContent=title;document.body.append(d);dialog=d;d.addEventListener('close',()=>{if(dialog===d)dialog=null;d.remove()});d.showModal();return d}
 function error(d,e){const el=d.querySelector('.err');if(el)el.textContent=e.name==='AbortError'?'连接超时，请重试':e.message}
 function renderUser(){
@@ -33,7 +33,7 @@ function login(after){
  const d=modal('登录妙棋手','<p>与桌游大厅共用一个账号。'+(pendingInvite?'登录后直接进入好友的房间。':'')+'</p><form><input name="username" autocomplete="username" placeholder="用户名或邮箱" required maxlength="254"><input name="password" autocomplete="current-password" type="password" placeholder="密码（至少10位）" minlength="10" required><div class="err" role="alert"></div><button class="main" type="submit">登录</button><button class="sub register" type="button">注册新账号</button><button class="sub cancel" type="button">取消</button></form>');
  const form=d.querySelector('form'),memory=window.GameAccounts?.mount(form,form.elements.username,form.elements.password);let submitting=false;
  async function submit(kind){if(submitting||!form.reportValidity())return;submitting=true;d.querySelectorAll('button').forEach(b=>b.disabled=true);try{user=(await api('/'+kind,{username:form.elements.username.value,password:form.elements.password.value})).user;memory?.remember(user);d.close();renderUser();after?.()}catch(e){error(d,e)}finally{submitting=false;d.querySelectorAll('button').forEach(b=>b.disabled=false)}}
- form.onsubmit=e=>{e.preventDefault();submit('login')};d.querySelector('.register').onclick=()=>submit('register');d.querySelector('.cancel').onclick=()=>d.close();
+ form.onsubmit=e=>{e.preventDefault();submit('login')};d.querySelector('.register').onclick=()=>submit('register');d.querySelector('.cancel').onclick=()=>{if(pendingInvite)leaveInvite();else d.close()};
 }
 async function logout(){
  try{await api('/logout',{});suspend();room=null;user=null;localStorage.removeItem(KEY);navigator.credentials?.preventSilentAccess?.().catch(()=>{});if(mode==='online'){mode=draftMode='ai';reset();navigate('home')}renderUser()}
@@ -42,7 +42,34 @@ async function logout(){
 function remember(){try{localStorage.setItem(KEY,JSON.stringify({code:room.code,user:user.id}))}catch{}const url=new URL(location.href);url.searchParams.set('room',room.code);window.history.replaceState(null,'',url)}
 function randomCode(){return Array.from(crypto.getRandomValues(new Uint8Array(4)),x=>x.toString(16).padStart(2,'0')).join('').toUpperCase()}
 function installRoom(next){suspend();room=next;connected=true;active=true;pendingInvite=null;sampleClock(room);remember();dialog?.close();enterGame();connectSocket();schedule()}
-async function joinInvite(code){if(!user)return login(()=>joinInvite(code));try{installRoom(await api('/chess/rooms/'+code,{type:'join'}))}catch(e){const d=modal('暂时无法进入房间','<p class="reason"></p><button class="main">重新尝试</button><button class="sub">返回联机大厅</button>');d.querySelector('.reason').textContent=e.message;d.querySelector('.main').onclick=()=>joinInvite(code);d.querySelector('.sub').onclick=()=>{pendingInvite=null;const url=new URL(location.href);url.searchParams.delete('room');window.history.replaceState(null,'',url);open()}}}
+let inviteAttempt=0,inviteController=null;
+function clearInvite(){
+ inviteAttempt++;inviteController?.abort();inviteController=null;pendingInvite=null;
+ const url=new URL(location.href);url.searchParams.delete('room');window.history.replaceState(null,'',url);
+ try{localStorage.removeItem(KEY)}catch{}
+}
+function leaveInvite(lobby=false){clearInvite();dialog?.close();if(mode==='online'){suspend();mode=draftMode='ai'}navigate('home');if(lobby)open()}
+async function joinInvite(code){
+ if(!user)return login(()=>joinInvite(code));
+ const attempt=++inviteAttempt;inviteController?.abort();const controller=new AbortController();inviteController=controller;
+ const d=modal('正在进入好友房间','<p class="reason" role="status">正在连接房间，请稍候…</p><button class="main" disabled>连接中…</button><button class="sub">返回联机大厅</button><button class="home sub">先玩单机</button>');
+ d.setAttribute('aria-busy','true');
+ d.querySelector('.sub').onclick=()=>leaveInvite(true);d.querySelector('.home').onclick=()=>leaveInvite();
+ d.addEventListener('cancel',e=>{e.preventDefault();leaveInvite()});
+ try{
+  const next=await api('/chess/rooms/'+code,{type:'join'},controller.signal);
+  if(attempt!==inviteAttempt||!d.open)return;
+  installRoom(next);
+ }catch(e){
+  if(attempt!==inviteAttempt||!d.open)return;
+  d.removeAttribute('aria-busy');
+  const terminal=[404,410].includes(e.status),needsLogin=e.status===401;
+  d.querySelector('h2').textContent=terminal?'这个房间已失效':needsLogin?'请重新登录':'暂时无法进入房间';
+  d.querySelector('.reason').textContent=terminal?'房间已关闭或不存在，请让好友重新发送邀请，或创建一个新房间。':needsLogin?'登录状态已过期，重新登录后即可再次进入。':e.name==='AbortError'?'连接超时，请检查网络后重试，也可以先玩单机。':e instanceof TypeError?'网络连接失败，请检查网络后重试。':e.message;
+  const retry=d.querySelector('.main');retry.disabled=false;retry.hidden=terminal;retry.textContent=needsLogin?'重新登录':'重新尝试';
+  retry.onclick=()=>{if(needsLogin){user=null;renderUser();return login(()=>joinInvite(code))}return joinInvite(code)};
+ }finally{if(inviteController===controller)inviteController=null}
+}
 function open(){
  if(pendingInvite)return joinInvite(pendingInvite);
  if(!user)return login(open);
@@ -181,9 +208,10 @@ document.addEventListener('visibilitychange',()=>{if(!document.hidden&&active){c
 window.addEventListener('hashchange',()=>{if(mode==='online'&&active){render();checkDraw()}});
 (async()=>{try{
  user=(await api('/me')).user;renderUser();
- if(pendingInvite){if(user)await joinInvite(pendingInvite);else login(()=>joinInvite(pendingInvite));return}
+ if(pendingInvite){if(dialog?.open)return;if(user)await joinInvite(pendingInvite);else login(()=>joinInvite(pendingInvite));return}
  if(!user)return;let saved;try{saved=JSON.parse(localStorage.getItem(KEY))}catch{}if(saved?.user!==user.id||!saved?.code)return;
  room=await api('/chess/rooms/'+saved.code);active=true;connected=true;sampleClock(room);remember();connectSocket();if(location.hash==='#game')enterGame();else{const b=$('continueGame');b.hidden=false;b.textContent='返回联机房间 →';b.onclick=()=>enterGame()}schedule();
-}catch{renderUser();if(pendingInvite){const d=modal('邀请房间连接中断','<p>请检查网络后重试，邀请信息已保留。</p><button class="main">重试进入房间</button>');d.querySelector('.main').onclick=()=>{if(user)joinInvite(pendingInvite);else login(()=>joinInvite(pendingInvite))}}}})();
+}catch{renderUser();if(pendingInvite&&!dialog?.open){const d=modal('邀请房间连接中断','<p>请检查网络后重试，邀请信息已保留。</p><button class="main">重试进入房间</button><button class="sub">先玩单机</button>');d.querySelector('.sub').onclick=()=>leaveInvite();d.querySelector('.main').onclick=()=>{if(user)joinInvite(pendingInvite);else login(()=>joinInvite(pendingInvite))}}}})();
 })();
+
 
