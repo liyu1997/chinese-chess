@@ -1,6 +1,6 @@
 let gameRecordId=crypto.randomUUID?.()||('game-'+Date.now()+'-'+Math.random().toString(36).slice(2)),gameRecordOwner=null,gameStartedAt=Date.now(),gameTrackEligible=false;
 let pageView='home',draftMode='ai';
-const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null,resignedSide=null,pendingResign=null;let last=null;let terrainMap='riverside';try{terrainMap=localStorage.getItem('jing-terrain-map')==='clean'?'clean':'riverside';if(localStorage.getItem('jing-terrain-map')==='vector')localStorage.setItem('jing-terrain-map','riverside')}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['regal','jade','street','mascot'].includes(savedSkin)?'benteng':['serif','benteng','sans','playful'].includes(savedSkin)?savedSkin:'playful';if(['regal','jade','street','mascot'].includes(savedSkin))localStorage.setItem('jing-xiangqi-skin','benteng')}catch{};const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null,resignedSide=null,pendingResign=null;let last=null;let terrainMap='riverside';try{terrainMap=localStorage.getItem('jing-terrain-map')==='clean'?'clean':'riverside';if(localStorage.getItem('jing-terrain-map')==='vector')localStorage.setItem('jing-terrain-map','riverside')}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['regal','jade','street','mascot'].includes(savedSkin)?'benteng':['serif','benteng','mocheng','sans','playful'].includes(savedSkin)?savedSkin:'playful';if(['regal','jade','street','mascot'].includes(savedSkin))localStorage.setItem('jing-xiangqi-skin','benteng')}catch{};const NS='http://www.w3.org/2000/svg';
 function node(tag,attrs={},parent=$('board')){let n=document.createElementNS(NS,tag);for(let k in attrs)n.setAttribute(tag==='image'&&k==='href'&&parent.closest('.piece-artwork')?'data-art-src':k,attrs[k]);parent.append(n);return n;}function text(content,attrs,parent){let n=node('text',attrs,parent);n.textContent=content;return n;}
 
 // A complete, interactive board never depends on any image request.
@@ -38,7 +38,7 @@ function paintPiece(parent,p,pieceSkin=skin){
  node('circle',{r:21.5,fill:'none',stroke:p[0]==='r'?'#c87c62':'#9a9d88','stroke-width':.7},base);
  text(XQ.names[p[0]][p[1]],{x:0,y:10,'text-anchor':'middle','font-family':'Microsoft YaHei,PingFang SC,system-ui,sans-serif','font-size':30,'font-weight':600,fill:p[0]==='r'?'#a84230':'#29352e'},base);
  const art=node('g',{class:'piece-artwork',opacity:0,'pointer-events':'none','aria-hidden':'true','aria-label':parent.getAttribute('aria-label')||p},parent);
- if(illustratedSkins[pieceSkin])mascotArt(art,p,51,true,pieceSkin);else if(pieceSkin==='playful')playfulArt(art,p);else if(pieceSkin==='serif')artwork(art,p);else sansArtwork(art,p);
+ if(pieceSkin==='mocheng')mochengArt(art,p);else if(illustratedSkins[pieceSkin])mascotArt(art,p,51,true,pieceSkin);else if(pieceSkin==='playful')playfulArt(art,p);else if(pieceSkin==='serif')artwork(art,p);else sansArtwork(art,p);
  const images=[...art.querySelectorAll('image[data-art-src]')];
  if(!images.length)return;
  const batch=activePieceBatch,record={art,base,images,ready:false};
@@ -128,8 +128,24 @@ function playfulArt(parent,p,size=52){
 playfulArt.id=0;
 // Brand collection: all fourteen illustrated emblems share one high-resolution atlas.
 const illustratedSkins={
+ mocheng:{name:'墨橙圆章',note:'文字 · 墨橙',river:'妙 棋 手',line:'妙 棋 手 · 棋 逢 趣 手',red:'#ff8a13',black:'#fff5df'},
  benteng:{name:'妙棋手',note:'汉风 · 漫画',river:'妙 棋 手',line:'妙 棋 手 · 棋 逢 趣 手',red:'#fff0da',black:'#e8f3ff'},
 };
+// Display the selected design's original faces without repainting its lettering.
+// The atlas is fetched once; circular SVG clipping keeps every token edge clean.
+function mochengArt(parent,p){
+ const cols={k:0,a:1,e:2,h:3,r:4,c:5,p:6};
+ const cx=[143,350,560,770,979,1186,1393][cols[p[1]]],cy=p[0]==='r'?285:525;
+ const id='mocheng-face-'+(++mochengArt.id),defs=node('defs',{},parent);
+ const clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},defs);
+ node('circle',{r:25.5},clip);
+ node('circle',{cy:1.5,r:25.7,fill:'#171816'},parent);
+ const face=node('g',{'clip-path':`url(#${id})`},parent);
+ const viewport=node('svg',{x:-25.5,y:-25.5,width:51,height:51,viewBox:`${cx-100} ${cy-98} 200 196`,preserveAspectRatio:'none','pointer-events':'none'},face);
+ node('image',{href:'./assets/mocheng/reference.webp?v=1',width:1536,height:1024,'pointer-events':'none'},viewport);
+ node('circle',{r:25.5,fill:'none',stroke:'#171816','stroke-width':.7},parent);
+}
+mochengArt.id=0;
 function mascotArt(parent,p,size=51,badge=true,artSkin=skin){
  const id='mascot-clip-'+(++mascotArt.id),refined=artSkin==='benteng',r=size/2;
  const defs=node('defs',{},parent),clip=node('clipPath',{id,clipPathUnits:'userSpaceOnUse'},defs);
@@ -209,7 +225,7 @@ document.querySelectorAll('[data-skin],[data-game-skin]').forEach(btn=>{let acti
 const repeatedSide=['r','b'].find(side=>XQ.checkStreak(history,board,side)>=5);
 $('longCheckWarning').hidden=pageView!=='game'||ended||!repeatedSide;
 $('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';syncLevelPicker();$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));paintPiece(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));paintPiece(icon,turn+'k');}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));paintPiece(icon,turn+'k');}if(!ended){$('status').textContent=busy?'山隐正在凝思…':(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}window.MQOnline?.render();}
-document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'温玉雅宋',sans:'疏朗 · 黑体',playful:'玲珑将相',benteng:'妙棋手'}[skin]));});
+document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'温玉雅宋',sans:'疏朗 · 黑体',playful:'玲珑将相',benteng:'妙棋手',mocheng:'墨橙圆章'}[skin]));});
 $('board').onclick=e=>{let p=$('board').createSVGPoint();p.x=e.clientX;p.y=e.clientY;p=p.matrixTransform($('board').getScreenCTM().inverse());let x=Math.round((p.x-56)/56),y=Math.round((p.y-60)/56);if(flipped){x=8-x;y=9-y}if(x>=0&&x<9&&y>=0&&y<10)click(x,y)};
 function click(x,y){if(mode==='online'&&!window.MQOnline?.canMove())return;if(pageView!=='game'||ended||busy||mode==='ai'&&turn==='b')return;if(board[y][x]?.[0]===turn){selected=selected?.x===x&&selected?.y===y?null:{x,y};draw();return}if(selected){let m=legal.find(m=>m.x===selected.x&&m.y===selected.y&&m.X===x&&m.Y===y);if(m){if(mode==='online'){window.MQOnline.move(m);return}move(m);computer()}else toast('此处不可落子')}}
 function audio(){if(muted)return;try{let ctx=window.audioCtx||(window.audioCtx=new (window.AudioContext||window.webkitAudioContext)());ctx.resume();let o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(680,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(210,ctx.currentTime+.1);g.gain.setValueAtTime(.12,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.14);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.15)}catch{}}
@@ -483,5 +499,6 @@ if(typeof ResizeObserver==='function'){
 }
 if(document.fonts?.ready)document.fonts.ready.then(scheduleHomeSkinFold);
 scheduleHomeSkinFold();
+
 
 

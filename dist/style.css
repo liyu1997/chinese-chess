@@ -165,7 +165,7 @@ body[data-illustrated="true"] .piece:focus-visible{outline:none}body[data-illust
 @media(max-width:1080px){.home-panel .skin-options{grid-template-columns:repeat(2,minmax(0,1fr))}}
 
 /* 奔腾入阵 uses the approved complete-body Han comic collection. */
-body[data-skin="benteng"]{--collection-frame:#36342e;--collection-board:#fffaf0;--collection-edge:#f2e4cc;--collection-accent:#c65c23;--collection-button:#ef8636;--collection-selection:#fff0db}
+body:is([data-skin="benteng"],[data-skin="mocheng"]){--collection-frame:#36342e;--collection-board:#fffaf0;--collection-edge:#f2e4cc;--collection-accent:#c65c23;--collection-button:#ef8636;--collection-selection:#fff0db}
 .home-panel .skin-options button[data-skin="benteng"]{grid-column:1 / -1;justify-content:flex-start;gap:10px}
 .home-panel .skin-options button[data-skin="benteng"] .skin-sample{width:34px;height:34px}
 
@@ -427,3 +427,7 @@ body[data-page="home"] .home-mascot{width:60%;max-width:430px;height:auto;right:
 body[data-page="home"] .home-panel .skin-options{grid-template-columns:repeat(4,minmax(0,1fr))}
 body[data-page="home"] .academy-entry>span.academy-arrow{width:24px;height:24px;border:0;border-radius:0;background:none;box-shadow:none;color:#555b4b}
 body[data-page="home"] .academy-arrow svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+
+
+/* 墨橙圆章 reuses the 妙棋手 board and controls. */
+.mocheng-menu-icon{display:inline-grid;place-items:center;width:28px;height:28px;margin-right:5px;border-radius:50%;border:2px solid #20211e;background:#ff8a13;color:#171816;box-shadow:0 2px 0 #20211e;font:800 19px/1 PieceSans,sans-serif}
