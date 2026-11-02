@@ -474,7 +474,7 @@ function setSoundEnabled(enabled){
 try{muted=localStorage.getItem('miaoqi-sound')!=='on'}catch{}
 syncSoundSetting();
 $('soundSetting').addEventListener('change',()=>{setSoundEnabled($('soundSetting').checked);if(!muted)audio()});
-$('openSettings').onclick=()=>navigate('settings');
+$('openProfile').onclick=()=>navigate('settings');
 $('backSettings').onclick=()=>navigate('home');
 
 // Keep the skin heading at the first-screen edge; thumbnails follow on scroll.
