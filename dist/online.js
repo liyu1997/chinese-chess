@@ -46,20 +46,93 @@ function open(){
 function inviteLink(){const url=new URL('/',location.origin);url.searchParams.set('room',room.code);url.hash='game';return url.href}
 async function copyLink(d){try{await navigator.clipboard.writeText(inviteLink());if(d)d.querySelector('.err').textContent='邀请链接已复制，发给好友即可。';else toast('邀请链接已复制');return true}catch{if(d)d.querySelector('.err').textContent='请长按上方链接复制，发送给好友。';else toast('请打开分享房间查看邀请链接');return false}}
 function shareRoom(){if(!room)return;const d=modal('邀请好友入座','<p>好友点击链接即可进入房间；未登录时先登录，然后点击准备。</p><input class="invite-link" aria-label="房间邀请链接" readonly><button class="main wechat">分享到微信</button><button class="sub copy">复制邀请链接</button><p class="share-tip"></p><div class="err" role="status"></div><button class="sub cancel">返回棋局</button>');d.querySelector('input').value=inviteLink();d.querySelector('.share-tip').textContent=/MicroMessenger/i.test(navigator.userAgent)?'在微信中可点击右上角“…”转发给朋友或群聊。':'点击分享到微信，在系统分享面板中选择微信；如未显示微信，可复制链接后发送。';d.querySelector('.wechat').onclick=async()=>{if(navigator.share){try{await navigator.share({title:'妙棋手 · 邀请你来一局',text:'点击入座，双方准备后开始对弈。',url:inviteLink()});return}catch(e){if(e.name==='AbortError')return}}const copied=await copyLink(d);d.querySelector('.share-tip').textContent=copied?'请粘贴到微信发送；好友点击链接即可入座。':'请长按邀请链接复制，再发送到微信。'};d.querySelector('.copy').onclick=()=>copyLink(d);d.querySelector('.cancel').onclick=()=>d.close()}
-function suspend(){document.getElementById('mqRoomBar')?.setAttribute('hidden','');const top=document.querySelector('.board-heading small'),bottom=document.querySelector('.board-footer small');if(top)top.textContent='山隐 · 棋友';if(bottom)bottom.textContent='你执红 · 先手';active=false;generation++;try{localStorage.removeItem(KEY)}catch{}clearTimeout(timer);clearTimeout(reconnectTimer);const old=socket;socket=null;old?.close();for(const p of pending.values()){clearTimeout(p.timeout);p.reject(Error('已离开房间'))}pending.clear();connected=false;selected=null;const url=new URL(location.href);url.searchParams.delete('room');window.history.replaceState(null,'',url)}
-function enterGame(){if($('resultDialog').open)$('resultDialog').close();remember();epoch++;cancelComputer();busy=false;mode=draftMode='online';flipped=room.side==='b';drawAgreed=room.winner==='draw';resignedSide=room.winner&&room.winner!=='draw'?(room.winner==='r'?'b':'r'):null;selected=null;ended=false;endedRevision=-1;applyRoom();navigate('game');render();toast('房间 '+room.code+' · 你执'+(room.side==='r'?'红':'黑'))}
+function suspend(){closePreparation();preparationDismissed=null;document.getElementById('mqRoomBar')?.setAttribute('hidden','');const top=document.querySelector('.board-heading small'),bottom=document.querySelector('.board-footer small');if(top)top.textContent='山隐 · 棋友';if(bottom)bottom.textContent='你执红 · 先手';active=false;generation++;try{localStorage.removeItem(KEY)}catch{}clearTimeout(timer);clearTimeout(reconnectTimer);const old=socket;socket=null;old?.close();for(const p of pending.values()){clearTimeout(p.timeout);p.reject(Error('已离开房间'))}pending.clear();connected=false;selected=null;const url=new URL(location.href);url.searchParams.delete('room');window.history.replaceState(null,'',url)}
+function enterGame(){preparationDismissed=null;if($('resultDialog').open)$('resultDialog').close();remember();epoch++;cancelComputer();busy=false;mode=draftMode='online';flipped=room.side==='b';drawAgreed=room.winner==='draw';resignedSide=room.winner&&room.winner!=='draw'?(room.winner==='r'?'b':'r'):null;selected=null;ended=false;endedRevision=-1;applyRoom();navigate('game');render();toast('房间 '+room.code+' · 你执'+(room.side==='r'?'红':'黑'))}
 function applyRoom(){if(!room||!active||mode!=='online')return;board=room.board.map(row=>row.slice());turn=room.turn;last=room.last;let replay=XQ.initial();history=(room.moves||[]).map((m,i)=>{const snapshot=replay;replay=XQ.play(replay,m);return {board:snapshot,turn:i%2?'b':'r',label:`${i%2?'墨':'朱'} · ${XQ.names[m.piece[0]][m.piece[1]]} ${m.x+1},${m.y+1} → ${m.X+1},${m.Y+1}${m.captured?' · 吃子':''}`}});legal=XQ.moves(board,turn);ended=room.status==='ended';drawAgreed=room.winner==='draw';resignedSide=ended&&!drawAgreed?(room.winner==='r'?'b':'r'):null;selected=null;draw();if(ended)window.MQRecords?.onlineFinished(room);if(ended&&endedRevision!==room.revision){endedRevision=room.revision;dialog?.close();if(pageView==='game')showResult()}}
+// One persistent preparation dialog, updated in place as room state arrives.
+let preparation=null,preparationDismissed=null,preparationError='';
+function closePreparation(){if(preparation?.open)preparation.close();}
+function dismissPreparation(){preparationDismissed=room?.code;closePreparation();}
+function ensurePreparation(){
+ if(preparation)return preparation;
+ const d=document.createElement('dialog');d.className='mq-preparation';d.setAttribute('aria-labelledby','mqPrepTitle');
+ d.innerHTML=`<div class="prep-heading"><div><p class="prep-eyebrow">好友对战</p><h2 id="mqPrepTitle">对局准备</h2></div><button class="prep-close" type="button" aria-label="收起对局准备">×</button></div>
+ <div class="prep-room"><span class="prep-code"></span><span class="prep-connection" role="status"></span></div>
+ <div class="prep-players"><div class="prep-player" data-side="r"><span class="prep-piece" aria-hidden="true">帅</span><strong class="prep-name"></strong><span class="prep-state"></span></div><div class="prep-player" data-side="b"><span class="prep-piece" aria-hidden="true">将</span><strong class="prep-name"></strong><span class="prep-state"></span></div></div>
+ <label class="prep-time"><span>每方用时<small class="prep-time-note"></small></span><select class="prep-minutes" aria-label="房间每方用时"><option value="10">10分钟</option><option value="15">15分钟</option><option value="20">20分钟</option><option value="30">30分钟</option></select></label>
+ <p class="prep-help" aria-live="polite"></p><p class="prep-error" role="alert" hidden></p><div class="prep-actions"><button class="prep-share" type="button">邀请好友</button><button class="prep-ready" type="button">准备好了</button></div><button class="prep-peek" type="button">先看看棋盘</button>`;
+ document.body.append(d);preparation=d;
+ d.querySelector('.prep-close').onclick=d.querySelector('.prep-peek').onclick=dismissPreparation;
+ d.addEventListener('cancel',event=>{event.preventDefault();dismissPreparation()});
+ d.querySelector('.prep-share').onclick=shareRoom;
+ d.querySelector('.prep-minutes').onchange=()=>{if(room?.status==='waiting')action('setTime',{minutes:Number(d.querySelector('.prep-minutes').value)})};
+ d.querySelector('.prep-ready').onclick=()=>{if(room?.status==='waiting')action('ready',{ready:!room.players.find(p=>p.id===user?.id)?.ready})};
+ return d;
+}
+function renderPreparation(){
+ if(!active||mode!=='online'||!room||pageView!=='game'){closePreparation();return}
+ const d=ensurePreparation(),waiting=room.status==='waiting';
+ if(d.dataset.room!==room.code){closePreparation();d.dataset.room=room.code;preparationDismissed=null;preparationError='';}
+ if(d.dataset.phase==='waiting'&&!waiting)closePreparation();
+ d.dataset.phase=room.status;d.querySelector('#mqPrepTitle').textContent=waiting?'对局准备':'房间信息';d.querySelector('.prep-error').textContent=preparationError;d.querySelector('.prep-error').hidden=!preparationError;
+ d.querySelector('.prep-code').textContent='房间 '+room.code;
+ d.querySelector('.prep-connection').textContent=connected?'已连接':'正在重连…';
+ d.querySelector('.prep-connection').classList.toggle('offline',!connected);
+ for(const side of ['r','b']){
+  const player=room.players.find(p=>p.side===side),card=d.querySelector('[data-side="'+side+'"]');
+  card.querySelector('.prep-name').textContent=player?(player.id===user?.id?'你 · '+player.username:player.username):'等待好友入座';
+  card.querySelector('.prep-state').textContent=!player?'分享链接邀请好友':!waiting?(room.status==='ended'?'对局结束':'对局中'):player.ready?'已准备':'未准备';
+  card.classList.toggle('is-ready',!!player?.ready&&waiting);card.classList.toggle('is-empty',!player);
+ }
+ const select=d.querySelector('.prep-minutes'),self=room.players.find(p=>p.id===user?.id),opponent=room.players.find(p=>p.side!==room.side);
+ select.value=String(room.timeMinutes||15);select.disabled=!waiting||sending||!connected||room.owner!==user?.id;
+ d.querySelector('.prep-time-note').textContent=!waiting?'本局时间已锁定':room.owner===user?.id?'调整用时后，双方需重新准备':'由房主设置';
+ const ready=d.querySelector('.prep-ready');ready.hidden=!waiting;ready.disabled=sending||!connected;
+ ready.textContent=sending?'正在同步…':self?.ready?'取消准备':'准备好了';
+ d.querySelector('.prep-share').textContent=waiting?'邀请好友':'分享房间';
+ d.querySelector('.prep-peek').textContent=waiting?'先看看棋盘':'返回棋局';
+ d.querySelector('.prep-help').textContent=!connected?'连接恢复后自动同步，请稍候。':!waiting?(room.status==='ended'?'本局已结束。':'对局已开始，祝你落子从容。'):!opponent?'好友点击邀请链接入座，双方准备后自动开局。':self?.ready?'你已准备好，等待好友准备。':'双方都准备好后，对局自动开始。';
+ if(waiting&&!d.open&&preparationDismissed!==room.code&&!dialog?.open)d.showModal();
+}
+function showPreparation(){
+ if(!active||!room||mode!=='online'||pageView!=='game')return;
+ $('gameMore').open=false;renderPreparation();const d=ensurePreparation();if(!d.open)d.showModal();
+}
+const preparationStyle=document.createElement('style');preparationStyle.textContent=`
+.mq-preparation{box-sizing:border-box;width:min(460px,calc(100vw - 32px));max-height:calc(100dvh - 32px);overflow:auto;margin:auto;padding:28px;border:1px solid #ddd3c2;border-radius:24px;background:#fffaf1;color:#302f2a;box-shadow:0 24px 80px #30271626;font:14px/1.5 "Microsoft YaHei","PingFang SC",system-ui,sans-serif;letter-spacing:0}
+.mq-preparation::backdrop{background:#302b2359;backdrop-filter:blur(5px)}
+.mq-preparation button,.mq-preparation select{font:inherit;letter-spacing:0}
+.prep-heading{display:flex;justify-content:space-between;align-items:center;gap:16px}.prep-eyebrow{margin:0 0 4px;color:#a57548;font-size:11px}.mq-preparation h2{margin:0;font-size:24px;font-weight:600}.prep-close{width:36px;height:36px;border:0;border-radius:50%;background:#f1eadf;color:#8a7b68;font-size:23px!important;flex-shrink:0;line-height:1}
+.prep-room{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:20px 0;color:#8b7f6c;font-size:12px}.prep-code{font-variant-numeric:tabular-nums;letter-spacing:1px}.prep-connection{display:flex;align-items:center;gap:5px;font-size:11px}.prep-connection::before{content:'';width:5px;height:5px;border-radius:50%;background:#718469}.prep-connection.offline::before{background:#c28948}
+.prep-players{display:grid;grid-template-columns:1fr 1fr;gap:12px}.prep-player{display:flex;flex-direction:column;align-items:center;text-align:center;min-width:0;gap:10px;padding:22px 10px 17px;border:1px solid #e4dccc;border-radius:17px;background:#f6f0e6}.prep-player.is-empty{border-style:dashed;background:transparent}.prep-piece{display:grid;place-items:center;width:48px;height:48px;border:1.5px solid #a95a39;border-radius:50%;background:#ffedd6;box-shadow:0 3px 0 #e7d3b6;color:#a95a39;font-size:27px;font-weight:600}.prep-player[data-side=b] .prep-piece{border-color:#545d58;color:#545d58;background:#efeee5}.prep-name{max-width:100%;min-height:21px;font-size:13px;font-weight:500;overflow-wrap:anywhere}.prep-state{font-size:11px;color:#9a8c77}.is-ready .prep-state{color:#66805c}.is-empty .prep-piece{opacity:.35}
+.prep-time{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:24px 0 0;padding:0 0 20px;border-bottom:1px solid #e9e0d1}.prep-time-note{display:block;font-size:10px;color:#a29581;margin-top:5px}.prep-minutes{padding:9px 11px;border:1px solid #dcd2c1;border-radius:10px;background:#fffdf7;color:#453f35;max-width:120px}.prep-minutes:disabled{color:#887e6d;opacity:.8;cursor:default}.prep-help{margin:18px 0;color:#8b7c67;font-size:12px;line-height:1.8}.prep-error{color:#a14d3d;font-size:12px;margin:0 0 12px}.prep-actions{display:flex;gap:10px}.prep-actions button{flex:1;min-height:45px;padding:10px;border:0;border-radius:12px;font-weight:600}.prep-share{background:#f0e8da;color:#6f624e}.prep-ready{background:#e9984c;color:#302f2a}.prep-ready:disabled{opacity:.5;cursor:wait}.prep-peek{display:block;margin:12px auto 0;padding:6px 12px;color:#9a8b75;font-size:11px!important}.mq-preparation [hidden]{display:none!important}
+.mq-room-bar .room-title{flex:1;font-size:12px;color:#8a7d68}.mq-room-bar .room-prepare{padding:8px 10px;background:#f3eadc;font-size:11px}.mq-room-bar .mq-clocks[hidden]{display:none}
+body[data-online=true][data-room-state=waiting] .game-mode{visibility:hidden}
+@media(max-width:1099px),(max-aspect-ratio:6/5){body[data-online=true]:not(.immersive) .game-stage{width:min(100%,calc((100dvh - 220px)*.8125))}body[data-online=true][data-room-state=waiting]:not(.immersive) .game-stage{width:min(100%,calc((100dvh - 175px)*.8125))}.mq-room-bar{margin-bottom:8px;gap:6px}}
+@media(max-width:480px){.mq-preparation{padding:22px}.prep-player{padding:18px 8px 14px}.mq-preparation h2{font-size:22px}}
+`;document.head.append(preparationStyle);
+
 function render(){
- let bar=document.getElementById('mqRoomBar');if(!bar){bar=document.createElement('div');bar.id='mqRoomBar';bar.className='mq-room-bar';bar.innerHTML='<span class="room-title"></span><button class="share" type="button">分享房间</button><button class="ready" type="button">准备</button><span class="seats" aria-live="polite"></span><label class="mq-time-label">每方用时<select class="time-select" aria-label="房间每方用时"><option value="10">10分钟</option><option value="15">15分钟</option><option value="20">20分钟</option><option value="30">30分钟</option></select></label><div class="mq-clocks"><div class="mq-clock" id="mqClockR" aria-label="红方剩余用时"><span>红方</span><strong>15:00</strong></div><div class="mq-clock" id="mqClockB" aria-label="黑方剩余用时"><span>黑方</span><strong>15:00</strong></div></div>';document.querySelector('.game-nav')?.insertAdjacentElement('afterend',bar);bar.querySelector('.share').onclick=shareRoom;bar.querySelector('.time-select').onchange=()=>action('setTime',{minutes:Number(bar.querySelector('.time-select').value)});bar.querySelector('.ready').onclick=()=>action('ready',{ready:!room.players.find(p=>p.id===user.id)?.ready})}
- bar.hidden=mode!=='online';document.body.dataset.online=String(mode==='online'&&!!room);if(mode!=='online'||!room)return;
- bar.querySelector('.room-title').textContent=`房间 ${room.code} · 你执${room.side==='r'?'红':'黑'}`;
- const opponent=room.players.find(p=>p.side!==room.side),self=room.players.find(p=>p.side===room.side),waiting=room.status==='waiting',ready=bar.querySelector('.ready');
- ready.hidden=!waiting;ready.disabled=sending||!connected;ready.textContent=self?.ready?'取消准备':'准备';bar.querySelector('.time-select').value=String(room.timeMinutes||15);bar.querySelector('.time-select').disabled=!waiting||sending||!connected||room.owner!==user?.id;renderClocks();
- bar.querySelector('.seats').hidden=!waiting;bar.querySelector('.seats').textContent=`你：${self?.ready?'已准备':'未准备'}　·　${opponent?opponent.username+'：'+(opponent.ready?'已准备':'未准备'):'等待好友通过邀请链接入座'}`;
+ let bar=document.getElementById('mqRoomBar');
+ if(!bar){
+  bar=document.createElement('div');bar.id='mqRoomBar';bar.className='mq-room-bar';
+  bar.innerHTML='<span class="room-title"></span><button class="room-prepare" type="button">对局准备</button><div class="mq-clocks"><div class="mq-clock" id="mqClockR" aria-label="红方剩余用时"><span>红方</span><strong>15:00</strong></div><div class="mq-clock" id="mqClockB" aria-label="黑方剩余用时"><span>黑方</span><strong>15:00</strong></div></div>';
+  document.querySelector('.game-nav')?.insertAdjacentElement('afterend',bar);bar.querySelector('.room-prepare').onclick=showPreparation;
+ }
+ const online=active&&mode==='online'&&!!room;
+ bar.hidden=!online;document.body.dataset.online=String(online);document.body.dataset.roomState=online?room.status:'';
+ let info=document.getElementById('mqRoomInfo');
+ if(!info){info=document.createElement('button');info.id='mqRoomInfo';info.type='button';info.textContent='房间信息';info.onclick=showPreparation;document.querySelector('#gameMore .more-panel')?.prepend(info)}
+ info.hidden=!online;
+ if(!online){closePreparation();return}
+ const opponent=room.players.find(p=>p.side!==room.side),self=room.players.find(p=>p.side===room.side),waiting=room.status==='waiting';
+ bar.querySelector('.room-title').hidden=!waiting;bar.querySelector('.room-title').textContent='好友对战';
+ bar.querySelector('.room-prepare').hidden=!waiting;bar.querySelector('.mq-clocks').hidden=waiting;renderClocks();
  $('opponent').textContent=opponent?opponent.username:'等待好友加入';$('undo').disabled=true;$('offerDraw').disabled=ended||sending||!connected||room.status!=='playing'||!!room.drawOffer;$('resign').disabled=ended||sending||!connected||waiting;
  $('status').textContent=ended?(room.winner==='draw'?'和棋 · 双方同意':room.winner===room.side?'你赢得了本局':'对手赢得了本局'):!connected?'连接中，正在恢复…':waiting?(!opponent?'等待好友入座':self?.ready?'已准备，等待好友':'点击准备，开始对弈'):sending?'落子确认中…':turn===room.side?'轮到你落子':'等待对手落子';
  $('hint').textContent=ended?(room.endReason==='timeout'?(room.winner==='r'?'黑方':'红方')+'用时耗尽，超时判负':'本局结束，可以创建新房间'):!connected?'网络恢复后自动同步棋局':waiting?'双方都点击准备后，自动开始对局':room.drawOffer?(room.drawOffer===room.side?'已向对手发出求和请求':'对手请求和棋，请确认'):XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':turn===room.side?'轻触棋子，查看可行之处':'对手正在思考';
  const top=document.querySelector('.board-heading small'),bottom=document.querySelector('.board-footer small');if(top)top.textContent=room.players.find(p=>p.side==='b')?.username||'等待加入';if(bottom)bottom.textContent=(room.players.find(p=>p.side==='r')?.username||'')+' · 红方先手';$('continueGame').hidden=ended;
+ renderPreparation();
 }
 function checkDraw(){if(!active||pageView!=='game'||!room||ended)return;if(room.drawOffer&&room.drawOffer!==room.side){if(dialog?.dataset.drawRevision===String(room.revision))return;const d=modal('对手提议和棋','<p>同意后本局以和棋结束；拒绝则继续对弈。</p><button class="main">同意和棋</button><button class="sub">继续对弈</button>');d.dataset.drawRevision=room.revision;d.querySelector('.main').onclick=()=>{d.close();action('acceptDraw')};d.querySelector('.sub').onclick=()=>{d.close();action('declineDraw')};d.addEventListener('cancel',e=>{e.preventDefault();d.close();action('declineDraw')})}else if(dialog?.dataset.drawRevision)dialog.close()}
 function acceptState(next,force=false){if(!active||!room||next.code!==room.code||next.revision<room.revision)return;const changed=next.revision!==room.revision;room=next;sampleClock(next);connected=true;if(changed||force)applyRoom();else render();if(room.status==='ended')window.MQRecords?.onlineFinished(room);checkDraw()}
@@ -81,9 +154,10 @@ async function sync(){
 }
 async function action(type,extra={}){
  if(!active||!room||sending||!connected)return;
+ if(type==='ready'||type==='setTime')preparationError='';
  const g=generation,value={type,revision:room.revision,...extra};clearTimeout(timer);sending=true;
  if(type==='move'){board=XQ.play(room.board,extra);turn=room.turn==='r'?'b':'r';last=extra;selected=null;legal=[];audio();draw()}else render();
- try{const next=socket?.readyState===1?await socketAction(value):await api('/chess/rooms/'+room.code,value);if(g!==generation)return;acceptState(next,true)}catch(e){if(g!==generation)return;applyRoom();toast(e.name==='AbortError'?'提交超时，正在核对棋局':e.message);if(e.status===401){user=null;renderUser();suspend()}else if(socket?.readyState===1)socket.send(JSON.stringify({type:'sync'}));else connected=false}finally{sending=false;render();if(g===generation)schedule(socket?.readyState===1?20000:10)}
+ try{const next=socket?.readyState===1?await socketAction(value):await api('/chess/rooms/'+room.code,value);if(g!==generation)return;acceptState(next,true)}catch(e){if(g!==generation)return;if(type==='ready'||type==='setTime')preparationError=e.name==='AbortError'?'提交超时，请稍后重试':e.message;applyRoom();toast(e.name==='AbortError'?'提交超时，正在核对棋局':e.message);if(e.status===401){user=null;renderUser();suspend()}else if(socket?.readyState===1)socket.send(JSON.stringify({type:'sync'}));else connected=false}finally{sending=false;render();if(g===generation)schedule(socket?.readyState===1?20000:10)}
 }
 function confirmation(title,type){if(!active||ended)return;const d=modal(title,'<p>操作将同步给对手。</p><button class="main">确认</button><button class="sub">取消</button>');d.querySelector('.main').onclick=()=>{d.close();action(type)};d.querySelector('.sub').onclick=()=>d.close()}
 window.MQOnline={getUser:()=>user,open,suspend,render,shareRoom,canMove:()=>active&&connected&&!sending&&room?.status==='playing'&&room.side===room.turn&&remainingTime(room,room.side,currentClock())>0,move:m=>action('move',m),offerDraw:()=>confirmation('向对手提议和棋？','offerDraw'),resign:()=>confirmation('确认认输？','resign')};
@@ -99,3 +173,4 @@ window.addEventListener('hashchange',()=>{if(mode==='online'&&active){render();c
  room=await api('/chess/rooms/'+saved.code);active=true;connected=true;sampleClock(room);remember();connectSocket();if(location.hash==='#game')enterGame();else{const b=$('continueGame');b.hidden=false;b.textContent='返回联机房间 →';b.onclick=()=>enterGame()}schedule();
 }catch{renderUser();if(pendingInvite){const d=modal('邀请房间连接中断','<p>请检查网络后重试，邀请信息已保留。</p><button class="main">重试进入房间</button>');d.querySelector('.main').onclick=()=>{if(user)joinInvite(pendingInvite);else login(()=>joinInvite(pendingInvite))}}}})();
 })();
+
