@@ -1,4 +1,5 @@
-(()=>{
+(function initOnline(){
+if(document.readyState==='loading'){document.addEventListener('DOMContentLoaded',initOnline,{once:true});return}
 if(window.MQOnline)return;
 const API='https://tablegame.jujuli.com.cn/api',KEY='mq-online-room-v3';
 let user=null,room=null,timer=0,sending=false,fetching=false,connected=false,active=false,dialog=null,generation=0,endedRevision=-1;
