@@ -20,14 +20,25 @@ const style=document.createElement('style');style.textContent=`#onlineMode{opaci
 async function api(path,data){const controller=new AbortController(),timeout=setTimeout(()=>controller.abort(),12000);try{const r=await fetch(API+path,{credentials:'include',cache:'no-store',signal:controller.signal,...(data===undefined?{}:{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)})});let result;try{result=await r.json()}catch{throw Error('服务连接失败，请稍后重试')}if(!r.ok){const e=Error(result.error||'网络请求失败');e.status=r.status;throw e}return result}finally{clearTimeout(timeout)}}
 function modal(title,html){dialog?.close();dialog?.remove();const d=document.createElement('dialog');d.className='mq-auth';d.innerHTML='<h2></h2>'+html;d.querySelector('h2').textContent=title;document.body.append(d);dialog=d;d.addEventListener('close',()=>{if(dialog===d)dialog=null;d.remove()});d.showModal();return d}
 function error(d,e){const el=d.querySelector('.err');if(el)el.textContent=e.name==='AbortError'?'连接超时，请重试':e.message}
-function renderUser(){window.dispatchEvent(new CustomEvent('mq-auth',{detail:{user}}));document.querySelector('.mq-user')?.remove();const b=document.createElement('button');b.className='mq-user';b.textContent=user?user.username:'登录';b.onclick=()=>user?account():login(pendingInvite?()=>joinInvite(pendingInvite):undefined);document.querySelector('.header-right')?.prepend(b)}
+function renderUser(){
+ window.dispatchEvent(new CustomEvent('mq-auth',{detail:{user}}));
+ const letter=document.getElementById('avatarLetter');if(letter)letter.textContent=user?(user.username||'棋').trim().slice(0,1).toUpperCase():'铭';
+ const name=document.getElementById('profileName'),hint=document.getElementById('profileHint'),loginButton=document.getElementById('profileLogin'),logoutButton=document.getElementById('profileLogout');
+ if(name)name.textContent=user?user.username:'尚未登录';
+ if(hint)hint.textContent=user?'聚聚里桌游统一账号 · 已登录':'登录后可在妙棋手与桌游大厅使用同一账号';
+ if(loginButton)loginButton.hidden=!!user;
+ if(logoutButton)logoutButton.hidden=!user;
+}
 function login(after){
  const d=modal('登录妙棋手','<p>与桌游大厅共用一个账号。'+(pendingInvite?'登录后直接进入好友的房间。':'')+'</p><form><input name="username" autocomplete="username" placeholder="用户名或邮箱" required maxlength="254"><input name="password" autocomplete="current-password" type="password" placeholder="密码（至少10位）" minlength="10" required><div class="err" role="alert"></div><button class="main" type="submit">登录</button><button class="sub register" type="button">注册新账号</button><button class="sub cancel" type="button">取消</button></form>');
  const form=d.querySelector('form'),memory=window.GameAccounts?.mount(form,form.elements.username,form.elements.password);let submitting=false;
  async function submit(kind){if(submitting||!form.reportValidity())return;submitting=true;d.querySelectorAll('button').forEach(b=>b.disabled=true);try{user=(await api('/'+kind,{username:form.elements.username.value,password:form.elements.password.value})).user;memory?.remember(user);d.close();renderUser();after?.()}catch(e){error(d,e)}finally{submitting=false;d.querySelectorAll('button').forEach(b=>b.disabled=false)}}
  form.onsubmit=e=>{e.preventDefault();submit('login')};d.querySelector('.register').onclick=()=>submit('register');d.querySelector('.cancel').onclick=()=>d.close();
 }
-function account(){const d=modal('桌游账号','<p class="name"></p><p>在妙棋手和桌游大厅中通用。</p><div class="err"></div><button class="main">返回</button><button class="sub">退出登录</button>');d.querySelector('.name').textContent=user.username;d.querySelector('.main').onclick=()=>d.close();d.querySelector('.sub').onclick=async()=>{try{await api('/logout',{});suspend();room=null;user=null;localStorage.removeItem(KEY);navigator.credentials?.preventSilentAccess?.().catch(()=>{});if(mode==='online'){mode=draftMode='ai';reset();navigate('home')}d.close();renderUser()}catch(e){error(d,e)}}}
+async function logout(){
+ try{await api('/logout',{});suspend();room=null;user=null;localStorage.removeItem(KEY);navigator.credentials?.preventSilentAccess?.().catch(()=>{});if(mode==='online'){mode=draftMode='ai';reset();navigate('home')}renderUser()}
+ catch(e){toast(e.message)}
+}
 function remember(){try{localStorage.setItem(KEY,JSON.stringify({code:room.code,user:user.id}))}catch{}const url=new URL(location.href);url.searchParams.set('room',room.code);window.history.replaceState(null,'',url)}
 function randomCode(){return Array.from(crypto.getRandomValues(new Uint8Array(4)),x=>x.toString(16).padStart(2,'0')).join('').toUpperCase()}
 function installRoom(next){suspend();room=next;connected=true;active=true;pendingInvite=null;sampleClock(room);remember();dialog?.close();enterGame();connectSocket();schedule()}
@@ -160,6 +171,8 @@ async function action(type,extra={}){
  try{const next=socket?.readyState===1?await socketAction(value):await api('/chess/rooms/'+room.code,value);if(g!==generation)return;acceptState(next,true)}catch(e){if(g!==generation)return;if(type==='ready'||type==='setTime')preparationError=e.name==='AbortError'?'提交超时，请稍后重试':e.message;applyRoom();toast(e.name==='AbortError'?'提交超时，正在核对棋局':e.message);if(e.status===401){user=null;renderUser();suspend()}else if(socket?.readyState===1)socket.send(JSON.stringify({type:'sync'}));else connected=false}finally{sending=false;render();if(g===generation)schedule(socket?.readyState===1?20000:10)}
 }
 function confirmation(title,type){if(!active||ended)return;const d=modal(title,'<p>操作将同步给对手。</p><button class="main">确认</button><button class="sub">取消</button>');d.querySelector('.main').onclick=()=>{d.close();action(type)};d.querySelector('.sub').onclick=()=>d.close()}
+document.getElementById('profileLogin')?.addEventListener('click',()=>login(pendingInvite?()=>joinInvite(pendingInvite):undefined));
+document.getElementById('profileLogout')?.addEventListener('click',logout);
 window.MQOnline={getUser:()=>user,open,suspend,render,shareRoom,canMove:()=>active&&connected&&!sending&&room?.status==='playing'&&room.side===room.turn&&remainingTime(room,room.side,currentClock())>0,move:m=>action('move',m),offerDraw:()=>confirmation('向对手提议和棋？','offerDraw'),resign:()=>confirmation('确认认输？','resign')};
 setInterval(renderClocks,200);
 const button=$('onlineMode');if(button){button.disabled=false;button.removeAttribute('title');button.setAttribute('aria-label','联机对战');button.querySelector('small').textContent='好友对战';button.onclick=()=>{draftMode='online';draw();open()}}
