@@ -97,15 +97,15 @@ const levels={
  2:{name:'闲庭 · 入门',depth:2,time:0},
  3:{name:'凝思 · 进阶',depth:3,time:0},
  4:{name:'试锋 · 挑战',depth:4,time:1200},
- 5:{name:'纵横 · 高手',depth:6,time:2800},
- 6:{name:'入微 · 宗师',depth:8,time:5500}
+ 5:{name:'纵横 · 高手',depth:8,time:8400,baselineTime:2800,budgetMultiplier:3,qDepth:6,tableSize:120000,enhanced:true},
+ 6:{name:'入微 · 宗师',depth:12,time:55000,baselineTime:5500,budgetMultiplier:10,qDepth:8,tableSize:180000,enhanced:true}
 };
 function ai(b,level=2,random=Math.random,context={}){
  level=Number(level);if(!levels[level])level=2;
  if(level<=3)return basicAI(b,level,random,context);
  return deepAI(b,levels[level],random,context).move;
 }
-function deepAI(b,config,random=Math.random,context={}){
+function legacyDeepAI(b,config,random=Math.random,context={}){
  const start=Date.now(),deadline=start+config.time,stop={},table=new Map();
  let nodes=0,completedDepth=0;
  const other=s=>s==='b'?'r':'b';
@@ -185,6 +185,141 @@ function deepAI(b,config,random=Math.random,context={}){
  if(completed.length)best=variedMove(b,completed,config.variety??(config.depth>=8?4:config.depth>=6?6:10),random,context);
  return {move:best,depth:completedDepth,nodes,elapsed:Date.now()-start,value};
 }
+// High-strength evaluation is deliberately separate: levels 1–3 keep their behaviour.
+function evaluateAdvanced(b){
+ let total=0;
+ for(let y=0;y<10;y++)for(let x=0;x<9;x++){
+  const p=b[y][x];if(!p)continue;
+  const side=p[0],t=p[1],advance=side==='b'?y:9-y,centre=4-Math.abs(x-4);
+  let v=values[t];
+  if(t==='p')v+=advance*9+(advance>=5?70+centre*10:centre*2);
+  if(t==='h'){
+   v+=centre*9+Math.min(advance,6)*5;
+   for(const [dx,dy]of [[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2],[-1,2],[-1,-2]]){
+    const X=x+dx,Y=y+dy,lx=x+(Math.abs(dx)===2?Math.sign(dx):0),ly=y+(Math.abs(dy)===2?Math.sign(dy):0);
+    if(inside(X,Y)&&!b[ly][lx]&&b[Y][X]?.[0]!==side)v+=4;
+   }
+  }
+  if(t==='r'||t==='c'){
+   v+=centre*(t==='r'?3:5);
+   for(const[dx,dy]of [[1,0],[-1,0],[0,1],[0,-1]]){
+    let screened=false;
+    for(let X=x+dx,Y=y+dy;inside(X,Y);X+=dx,Y+=dy){
+     const q=b[Y][X];
+     if(!q){if(!screened)v+=t==='r'?2:1;continue;}
+     if(t==='r')break;
+     if(screened){if(q[0]!==side&&q[1]==='k')v+=32;break;}screened=true;
+    }
+   }
+  }
+  if(t==='a'||t==='e')v+=advance<=4?12:0;
+  if(t==='k'){
+   v+=x===4?12:0;
+   for(let Y=side==='b'?0:7;Y<=(side==='b'?2:9);Y++)for(let X=3;X<=5;X++)if(b[Y][X]===side+'a')v+=16;
+  }
+  total+=(side==='b'?v:-v);
+ }
+ return total;
+}
+function advancedAI(b,config,random=Math.random,context={}){
+ const start=Date.now(),deadline=start+Math.max(1,config.time),stop={},MATE=1e7;
+ const table=new Map(),killers=[],history=new Map(),tableLimit=config.tableSize||120000;
+ const nodeLimit=config.maxNodes??Infinity,quiescenceDepth=config.qDepth||6;
+ let nodes=0,qnodes=0,cutoffs=0,ttHits=0,completedDepth=0,stopReason='depth',completed=[];
+ const other=s=>s==='b'?'r':'b';
+ const id=m=>`${m.x}${m.y}${m.X}${m.Y}`;
+ const key=(p,s)=>s+p.map(row=>row.map(v=>v||'..').join('')).join('');
+ const material=(p,s)=>evaluateAdvanced(p)*(s==='b'?1:-1);
+ function tick(quiet=false){
+  nodes++;if(quiet)qnodes++;
+  if(nodes>nodeLimit){stopReason='nodes';throw stop;}
+  if((nodes&31)===0&&Date.now()>=deadline){stopReason='time';throw stop;}
+ }
+ function ordered(p,options,best,ply,side){
+  const ks=killers[ply]||[];
+  return options.map(m=>{const code=id(m),victim=p[m.Y][m.X];return{m,priority:code===best?1e9:victim?1e6+10*values[victim[1]]-values[p[m.y][m.x][1]]:ks.includes(code)?900000:(history.get(side+code)||0)}}).sort((a,z)=>z.priority-a.priority).map(v=>v.m);
+ }
+ function terminal(p,s,ply){
+  if(!p.some(row=>row.includes(s+'k')))return -MATE+ply;
+  if(!p.some(row=>row.includes(other(s)+'k')))return MATE-ply;
+  return null;
+ }
+ function quiet(p,s,alpha,beta,left,ply){
+  tick(true);const end=terminal(p,s,ply);if(end!==null)return end;
+  const checked=check(p,s),options=moves(p,s);
+  if(!options.length)return -MATE+ply;
+  const stand=material(p,s);
+  // Never stand pat in check: search the legal evasions even at the capture horizon.
+  if(ply>=64||left<=0&&!checked)return stand;
+  if(!checked){if(stand>=beta)return stand;alpha=Math.max(alpha,stand);}
+  for(const m of ordered(p,checked?options:options.filter(m=>p[m.Y][m.X]),'',ply,s)){
+   const value=-quiet(play(p,m),other(s),-beta,-alpha,left-1,ply+1);
+   if(value>=beta){cutoffs++;return value;}alpha=Math.max(alpha,value);
+  }
+  return alpha;
+ }
+ function search(p,s,d,alpha,beta,ply){
+  tick();const end=terminal(p,s,ply);if(end!==null)return end;
+  if(d<=0)return quiet(p,s,alpha,beta,quiescenceDepth,ply);
+  const hash=key(p,s),entry=table.get(hash),originalAlpha=alpha,originalBeta=beta;
+  if(entry&&entry.depth>=d){
+   ttHits++;if(entry.flag==='exact')return entry.value;
+   if(entry.flag==='lower')alpha=Math.max(alpha,entry.value);else beta=Math.min(beta,entry.value);
+   if(alpha>=beta)return entry.value;
+  }
+  const options=ordered(p,moves(p,s),entry?.best,ply,s);
+  if(!options.length)return -MATE+ply;
+  const inCheck=check(p,s);let value=-Infinity,best='',index=0;
+  for(const m of options){
+   const child=play(p,m),capture=!!p[m.Y][m.X];
+   const reduced=d>=4&&index>=6&&!inCheck&&!capture&&!check(child,other(s));
+   let next;
+   if(index===0)next=-search(child,other(s),d-1,-beta,-alpha,ply+1);
+   else{
+    // Principal-variation search rejects inferior moves with a narrow window.
+    next=-search(child,other(s),d-(reduced?2:1),-alpha-1,-alpha,ply+1);
+    if(reduced&&next>alpha)next=-search(child,other(s),d-1,-alpha-1,-alpha,ply+1);
+    if(next>alpha&&next<beta)next=-search(child,other(s),d-1,-beta,-alpha,ply+1);
+   }
+   index++;if(next>value){value=next;best=id(m);}alpha=Math.max(alpha,value);
+   if(alpha>=beta){
+    cutoffs++;
+    if(!capture){const code=id(m);killers[ply]=[code,...(killers[ply]||[]).filter(k=>k!==code)].slice(0,2);history.set(s+code,Math.min(800000,(history.get(s+code)||0)+d*d));}
+    break;
+   }
+  }
+  // Avoid path-dependent mate scores and wholesale cache clears mid-iteration.
+  if(Math.abs(value)<9e6&&(table.size<tableLimit||table.has(hash)))table.set(hash,{depth:d,value,best,flag:value<=originalAlpha?'upper':value>=originalBeta?'lower':'exact'});
+  return value;
+ }
+ let options=moves(b,'b');
+ for(let i=options.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[options[i],options[j]]=[options[j],options[i]];}
+ let best=options[0]||null,value=best?material(b,'b'):0;
+ for(let depth=1;depth<=config.depth&&options.length;depth++){
+  let iterationBest=null,iterationValue=-Infinity,alpha=-Infinity;const ranked=[];
+  try{
+   for(const m of ordered(b,options,best?id(best):'',0,'b')){
+    if(Date.now()>=deadline){stopReason='time';throw stop;}
+    const child=play(b,m);let exact=ranked.length===0;
+    let v=exact?-search(child,'r',depth-1,-Infinity,Infinity,1):-search(child,'r',depth-1,-alpha-1,-alpha,1);
+    if(!exact&&v>alpha){v=-search(child,'r',depth-1,-Infinity,Infinity,1);exact=true;}
+    ranked.push({move:m,value:v,exact});
+    if(exact&&v>iterationValue){iterationValue=v;iterationBest=m;}alpha=Math.max(alpha,v);
+   }
+  }catch(error){if(error!==stop)throw error;break;}
+  best=iterationBest;value=iterationValue;completedDepth=depth;completed=ranked;
+  options=ranked.sort((a,z)=>z.value-a.value).map(item=>item.move);
+  if(value>9e6){stopReason='mate';break;}
+ }
+ // A cutoff bound is never used to justify a random weaker root move.
+ const equal=completed.filter(item=>item.exact&&item.value===value);
+ if(equal.length>1)best=variedMove(b,equal,0,random,context);
+ return{move:best,depth:completedDepth,nodes,qnodes,elapsed:Date.now()-start,value,cutoffs,ttHits,stopReason};
+}
+function deepAI(b,config,random=Math.random,context={}){
+ return config.enhanced?advancedAI(b,config,random,context):legacyDeepAI(b,config,random,context);
+}
+
 // One round means one move by the checking side plus the opponent's reply.
 // Use board snapshots so undo and resumed games give the same streak.
 function checkStreak(history,current,side){
@@ -198,5 +333,6 @@ function checkStreak(history,current,side){
  return count;
 }
 function acceptsDraw(b,plies){return plies>=20&&score(b)<=120;}
-const api={initial,names,pseudo,check,play,moves,ai,levels,deepAI,checkStreak,acceptsDraw};if(typeof module!=='undefined')module.exports=api;else root.XQ=api;
+const api={initial,names,pseudo,check,play,moves,ai,levels,deepAI,evaluateAdvanced,checkStreak,acceptsDraw};if(typeof module!=='undefined')module.exports=api;else root.XQ=api;
 })(globalThis);
+

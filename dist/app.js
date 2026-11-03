@@ -242,7 +242,7 @@ if(selected)for(let m of legal.filter(m=>m.x===selected.x&&m.y===selected.y)){le
 document.querySelectorAll('[data-skin],[data-game-skin]').forEach(btn=>{let active=(btn.dataset.skin||btn.dataset.gameSkin)===skin;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});$('round').textContent=`第 ${String(Math.floor(history.length/2)+1).padStart(2,'0')} 回合`;$('moveCount').textContent=String(history.length).padStart(2,'0');$('history').innerHTML='';history.forEach((h,i)=>{let li=document.createElement('li');li.textContent=h.label;$('history').append(li)});$('undo').disabled=!history.length||busy;$('offerDraw').disabled=ended||busy||mode==='ai'&&turn!=='r';$('resign').disabled=ended;
 const repeatedSide=['r','b'].find(side=>XQ.checkStreak(history,board,side)>=5);
 $('longCheckWarning').hidden=pageView!=='game'||ended||!repeatedSide;
-$('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';syncLevelPicker();$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));paintPiece(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));paintPiece(icon,turn+'k');}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));paintPiece(icon,turn+'k');}if(!ended){$('status').textContent=busy?'山隐正在凝思…':(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}window.MQOnline?.render();}
+$('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';syncLevelPicker();$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));paintPiece(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));paintPiece(icon,turn+'k');}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));paintPiece(icon,turn+'k');}if(!ended){$('status').textContent=busy?(Number($('level').value)>=5?`山隐正在凝思（最多约${XQ.levels[Number($('level').value)].time/1000}秒）…`:'山隐正在凝思…'):(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}window.MQOnline?.render();}
 document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'温玉雅宋',sans:'疏朗 · 黑体',playful:'玲珑将相',benteng:'妙棋手',mocheng:'墨橙圆章'}[skin]));});
 $('board').onclick=e=>{let p=$('board').createSVGPoint();p.x=e.clientX;p.y=e.clientY;p=p.matrixTransform($('board').getScreenCTM().inverse());let x=Math.round((p.x-56)/56),y=Math.round((p.y-60)/56);if(flipped){x=8-x;y=9-y}if(x>=0&&x<9&&y>=0&&y<10)click(x,y)};
 function click(x,y){if(mode==='online'&&!window.MQOnline?.canMove())return;if(pageView!=='game'||ended||busy||mode==='ai'&&turn==='b')return;if(board[y][x]?.[0]===turn){selected=selected?.x===x&&selected?.y===y?null:{x,y};draw();return}if(selected){let m=legal.find(m=>m.x===selected.x&&m.y===selected.y&&m.X===x&&m.Y===y);if(m){if(mode==='online'){window.MQOnline.move(m);return}move(m);computer()}else toast('此处不可落子')}}
@@ -320,11 +320,11 @@ function computer(){
  busy=true;draw();const e=epoch,level=Number($('level').value),position=aiPositionKey();
  const context={style:aiStyle,recent:Array.isArray(aiRecent[position])?aiRecent[position]:[]};
  const finish=m=>{if(e!==epoch)return;cancelComputer();busy=false;if(m&&proposeLongCheckDraw(m))return;rememberAI(position,m);if(m)move(m);else draw();};
- const fallback=()=>{cancelComputer();setTimeout(()=>{if(e!==epoch)return;finish(XQ.ai(board,Math.min(level,3),Math.random,context));},30);};
+ const fallback=()=>{if(level>=5){cancelComputer();busy=false;draw();$('hint').textContent='电脑暂时无法落子，请刷新后重试，当前棋局已保存。';toast('电脑暂时无法落子，请刷新重试');return;}cancelComputer();setTimeout(()=>{if(e!==epoch)return;finish(XQ.ai(board,Math.min(level,3),Math.random,context));},30);};
  setTimeout(()=>{
   if(e!==epoch)return;
   try{
-   aiWorker=new Worker('./ai-worker.js?v=variety31');
+   aiWorker=new Worker('./ai-worker.js?v=strength-20261103');
    aiWorker.onmessage=event=>{if(e!==epoch)return;finish(event.data.move);};
    aiWorker.onerror=()=>{if(e===epoch)fallback();};
    aiWorker.postMessage({board,level,context});
@@ -451,7 +451,7 @@ draftMode=mode;applyView(initialView());
 // Board changes are purely visual and preserve the current game.
 document.querySelectorAll('[data-map]').forEach(btn=>btn.onclick=()=>{terrainMap=btn.dataset.map;try{localStorage.setItem('jing-terrain-map',terrainMap)}catch{}draw();toast(terrainMap==='clean'?'已切换为素净棋盘':'已切换为柳岸行营');});
 
-const levelNotes={2:'轻松入局，适合熟悉走法。',3:'基础攻防，适合日常练习。',4:'深入计算攻防变化，思考约 1 秒。',5:'更深搜索与连续吃子推演，思考约 3 秒。',6:'最高搜索预算，细算战术变化，思考约 6 秒。'};
+const levelNotes={2:'轻松入局，适合熟悉走法。',3:'基础攻防，适合日常练习。',4:'深入计算攻防变化，思考约 1 秒。',5:'高手强化：3倍思考预算，复杂局面最多约8.4秒。',6:'宗师强化：10倍思考预算，复杂局面最多约55秒。'};
 function syncLevelPicker(){
  const input=$('level');
  document.querySelectorAll('[data-level]').forEach(button=>{
@@ -536,4 +536,5 @@ scheduleHomeSkinFold();
 
 // Controls are live only after all core handlers are installed.
 window.MQStartup?.ready();
+
 
