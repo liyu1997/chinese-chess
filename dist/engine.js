@@ -6,7 +6,7 @@ function pseudo(b,x,y,X,Y){if(!inside(X,Y)||(x===X&&y===Y))return false;let p=b[
 switch(t){case 'r':return (dx===0||dy===0)&&count===0;case 'c':return (dx===0||dy===0)&&count===(q?1:0);case 'h':return ax===2&&ay===1&&!b[y][x+Math.sign(dx)]||ax===1&&ay===2&&!b[y+Math.sign(dy)][x];case 'e':return ax===2&&ay===2&&(s==='r'?Y>=5:Y<=4)&&!b[y+dy/2][x+dx/2];case 'a':return palace&&ax===1&&ay===1;case 'k':return q&&q[1]==='k'&&dx===0&&count===0||palace&&ax+ay===1;case 'p':return dx===0&&dy===(s==='r'?-1:1)||ay===0&&ax===1&&(s==='r'?y<=4:y>=5); }return false;}
 function check(b,s){let k;for(let y=0;y<10;y++)for(let x=0;x<9;x++)if(b[y][x]===s+'k')k=[x,y];if(!k)return true;for(let y=0;y<10;y++)for(let x=0;x<9;x++)if(b[y][x]&&b[y][x][0]!==s&&pseudo(b,x,y,...k))return true;return false;}
 function play(b,m){let n=b.map(r=>r.slice());n[m.Y][m.X]=n[m.y][m.x];n[m.y][m.x]=null;return n;}
-function moves(b,s){
+function moves(b,s,isCheck=check){
  const result=[];
  for(let y=0;y<10;y++)for(let x=0;x<9;x++){
   const piece=b[y][x];if(!piece||piece[0]!==s)continue;
@@ -33,7 +33,7 @@ function moves(b,s){
   for(const [X,Y] of targets)if(pseudo(b,x,y,X,Y)){
    // Restore the board immediately; caller-owned positions never change.
    const captured=b[Y][X];b[Y][X]=piece;b[y][x]=null;
-   const safe=!check(b,s);b[y][x]=piece;b[Y][X]=captured;
+   const safe=!isCheck(b,s);b[y][x]=piece;b[Y][X]=captured;
    if(safe)result.push({x,y,X,Y});
   }
  }
@@ -98,7 +98,7 @@ const levels={
  3:{name:'凝思 · 进阶',depth:3,time:0},
  4:{name:'试锋 · 挑战',depth:4,time:1200},
  5:{name:'纵横 · 高手',depth:8,time:8400,baselineTime:2800,budgetMultiplier:3,qDepth:6,tableSize:120000,enhanced:true},
- 6:{name:'入微 · 宗师',depth:12,time:55000,baselineTime:5500,budgetMultiplier:10,qDepth:8,tableSize:180000,enhanced:true}
+ 6:{name:'入微 · 宗师',depth:12,time:7000,openingTime:2000,middleTime:5000,softRatio:0.6,qDepth:8,tableSize:180000,enhanced:true}
 };
 function ai(b,level=2,random=Math.random,context={}){
  level=Number(level);if(!levels[level])level=2;
@@ -221,8 +221,42 @@ function evaluateAdvanced(b){
  }
  return total;
 }
+// Probe attacks from the king instead of scanning every opposing piece per move.
+function fastCheck(b,s){
+ let x=-1,y=-1;
+ for(let Y=0;Y<10;Y++)for(let X=0;X<9;X++)if(b[Y][X]===s+'k'){x=X;y=Y;}
+ if(x<0)return true;
+ for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+  let screen=false;
+  for(let X=x+dx,Y=y+dy;inside(X,Y);X+=dx,Y+=dy){
+   const p=b[Y][X];if(!p)continue;
+   if(!screen){
+    if(p[0]!==s&&(p[1]==='r'||(p[1]==='k'||p[1]==='p')&&pseudo(b,X,Y,x,y)))return true;
+    screen=true;
+   }else{if(p[0]!==s&&p[1]==='c')return true;break;}
+  }
+ }
+ for(const [dx,dy,t] of [[2,1,'h'],[2,-1,'h'],[-2,1,'h'],[-2,-1,'h'],[1,2,'h'],[1,-2,'h'],[-1,2,'h'],[-1,-2,'h'],[2,2,'e'],[2,-2,'e'],[-2,2,'e'],[-2,-2,'e'],[1,1,'a'],[1,-1,'a'],[-1,1,'a'],[-1,-1,'a']]){
+  const X=x+dx,Y=y+dy;if(inside(X,Y)&&b[Y][X]=== (s==='b'?'r':'b')+t&&pseudo(b,X,Y,x,y))return true;
+ }
+ return false;
+}
+// Context plies survives undo/resume through the existing board history.
+// Without history, only positions still close to the initial array qualify as opening.
+function thinkingBudget(b,config,context={}){
+ if(!config.openingTime)return {phase:'standard',time:config.time,softTime:config.time};
+ let count=0,deviations=0;const start=initial();
+ for(let y=0;y<10;y++)for(let x=0;x<9;x++){if(b[y][x])count++;if(b[y][x]!==start[y][x])deviations++;}
+ const opening=count>=28&&(Number.isFinite(context.plies)?context.plies<20:deviations<=14);
+ const phase=opening?'opening':count<=14?'endgame':'middlegame';
+ const phaseTime=opening?config.openingTime:phase==='endgame'?config.time:config.middleTime;
+ // A check merits the full tactical budget outside opening.
+ const tactical=!opening&&(fastCheck(b,'b')||fastCheck(b,'r'));
+ const time=Math.max(1,Math.min(config.time,tactical?config.time:phaseTime));
+ return {phase,time,softTime:time*(config.softRatio??1)};
+}
 function advancedAI(b,config,random=Math.random,context={}){
- const start=Date.now(),deadline=start+Math.max(1,config.time),stop={},MATE=1e7;
+ const start=Date.now(),budget=thinkingBudget(b,config,context),deadline=start+Math.max(1,budget.time),stop={},MATE=1e7;
  const table=new Map(),killers=[],history=new Map(),tableLimit=config.tableSize||120000;
  const nodeLimit=config.maxNodes??Infinity,quiescenceDepth=config.qDepth||6;
  let nodes=0,qnodes=0,cutoffs=0,ttHits=0,completedDepth=0,stopReason='depth',completed=[];
@@ -246,7 +280,7 @@ function advancedAI(b,config,random=Math.random,context={}){
  }
  function quiet(p,s,alpha,beta,left,ply){
   tick(true);const end=terminal(p,s,ply);if(end!==null)return end;
-  const checked=check(p,s),options=moves(p,s);
+  const checked=fastCheck(p,s),options=moves(p,s,fastCheck);
   if(!options.length)return -MATE+ply;
   const stand=material(p,s);
   // Never stand pat in check: search the legal evasions even at the capture horizon.
@@ -267,12 +301,12 @@ function advancedAI(b,config,random=Math.random,context={}){
    if(entry.flag==='lower')alpha=Math.max(alpha,entry.value);else beta=Math.min(beta,entry.value);
    if(alpha>=beta)return entry.value;
   }
-  const options=ordered(p,moves(p,s),entry?.best,ply,s);
+  const options=ordered(p,moves(p,s,fastCheck),entry?.best,ply,s);
   if(!options.length)return -MATE+ply;
-  const inCheck=check(p,s);let value=-Infinity,best='',index=0;
+  const inCheck=fastCheck(p,s);let value=-Infinity,best='',index=0;
   for(const m of options){
    const child=play(p,m),capture=!!p[m.Y][m.X];
-   const reduced=d>=4&&index>=6&&!inCheck&&!capture&&!check(child,other(s));
+   const reduced=d>=4&&index>=6&&!inCheck&&!capture&&!fastCheck(child,other(s));
    let next;
    if(index===0)next=-search(child,other(s),d-1,-beta,-alpha,ply+1);
    else{
@@ -292,9 +326,9 @@ function advancedAI(b,config,random=Math.random,context={}){
   if(Math.abs(value)<9e6&&(table.size<tableLimit||table.has(hash)))table.set(hash,{depth:d,value,best,flag:value<=originalAlpha?'upper':value>=originalBeta?'lower':'exact'});
   return value;
  }
- let options=moves(b,'b');
+ let options=moves(b,'b',fastCheck);
  for(let i=options.length-1;i>0;i--){const j=Math.floor(random()*(i+1));[options[i],options[j]]=[options[j],options[i]];}
- let best=options[0]||null,value=best?material(b,'b'):0;
+ let best=options[0]||null,value=best?material(b,'b'):0,stable=0;
  for(let depth=1;depth<=config.depth&&options.length;depth++){
   let iterationBest=null,iterationValue=-Infinity,alpha=-Infinity;const ranked=[];
   try{
@@ -307,14 +341,16 @@ function advancedAI(b,config,random=Math.random,context={}){
     if(exact&&v>iterationValue){iterationValue=v;iterationBest=m;}alpha=Math.max(alpha,v);
    }
   }catch(error){if(error!==stop)throw error;break;}
+  stable=best&&iterationBest&&id(best)===id(iterationBest)&&Math.abs(value-iterationValue)<=25?stable+1:0;
   best=iterationBest;value=iterationValue;completedDepth=depth;completed=ranked;
   options=ranked.sort((a,z)=>z.value-a.value).map(item=>item.move);
   if(value>9e6){stopReason='mate';break;}
+  if(config.softRatio&&depth>=4&&stable>=2&&Date.now()-start>=budget.softTime){stopReason='stable';break;}
  }
  // A cutoff bound is never used to justify a random weaker root move.
  const equal=completed.filter(item=>item.exact&&item.value===value);
  if(equal.length>1)best=variedMove(b,equal,0,random,context);
- return{move:best,depth:completedDepth,nodes,qnodes,elapsed:Date.now()-start,value,cutoffs,ttHits,stopReason};
+ return{move:best,depth:completedDepth,nodes,qnodes,elapsed:Date.now()-start,value,cutoffs,ttHits,stopReason,phase:budget.phase,budgetMs:budget.time};
 }
 function deepAI(b,config,random=Math.random,context={}){
  return config.enhanced?advancedAI(b,config,random,context):legacyDeepAI(b,config,random,context);
@@ -333,6 +369,6 @@ function checkStreak(history,current,side){
  return count;
 }
 function acceptsDraw(b,plies){return plies>=20&&score(b)<=120;}
-const api={initial,names,pseudo,check,play,moves,ai,levels,deepAI,evaluateAdvanced,checkStreak,acceptsDraw};if(typeof module!=='undefined')module.exports=api;else root.XQ=api;
+const api={initial,names,pseudo,check,play,moves,ai,levels,deepAI,evaluateAdvanced,thinkingBudget,fastCheck,checkStreak,acceptsDraw};if(typeof module!=='undefined')module.exports=api;else root.XQ=api;
 })(globalThis);
 

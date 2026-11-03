@@ -3,7 +3,7 @@ const E=require('../dist/engine.js');
 const same=(a,b)=>JSON.stringify(a)===JSON.stringify(b);
 const blank=()=>Array.from({length:10},()=>Array(9).fill(null));
 const seeded=seed=>()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
-assert.equal(E.levels[5].time,2800*3);assert.equal(E.levels[6].time,5500*10);
+assert.equal(E.levels[5].time,2800*3);assert.equal(E.levels[6].time,7000);
 assert.equal(E.levels[5].depth,8);assert.equal(E.levels[6].depth,12);
 assert.deepEqual([2,3,4].map(l=>[E.levels[l].depth,E.levels[l].time]),[[2,0],[3,0],[4,1200]]);
 const trap=blank();trap[0][4]='bk';trap[9][4]='rk';trap[5][4]='rp';trap[4][0]='br';trap[5][0]='rp';trap[6][0]='rr';
