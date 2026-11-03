@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const XQ=require('../dist/engine.js'),review=require('../dist/review-worker.js');
+const b=Array.from({length:10},()=>Array(9).fill(null));
+b[0][4]='bk';b[9][4]='rk';b[1][3]='rr';b[1][5]='rr';b[2][4]='rr';b[1][4]='bp';
+const move={x:4,y:2,X:4,Y:1},before=JSON.stringify(b);
+assert.equal(XQ.check(b,'r'),false);assert.equal(XQ.check(b,'b'),false);
+assert(XQ.moves(b,'r').some(m=>JSON.stringify(m)===JSON.stringify(move)));
+const row=review.analysePly(b,move,'r',{milliseconds:500,nodes:50000});
+assert.equal(row.mate,true);assert.equal(row.label,'将死');assert.equal(row.loss,0);
+assert.equal(JSON.stringify(b),before,'Analysis must not mutate the live position');
+const final=XQ.play(b,move);assert.equal(XQ.check(final,'b'),true);assert.equal(XQ.moves(final,'b').length,0);
+const stale=Array.from({length:10},()=>Array(9).fill(null));stale[0][4]='bk';stale[9][4]='rk';stale[1][3]='rr';stale[1][5]='rr';stale[5][4]='rp';
+assert.equal(XQ.check(stale,'b'),false);assert.equal(XQ.moves(stale,'b').length,0);
+assert.equal(review.rankPosition(stale,'b').ranked.length,0);
+const initial=XQ.initial(),m=XQ.moves(initial,'r')[0],snapshot=JSON.stringify(initial);
+const ordinary=review.analysePly(initial,m,'r');assert.equal(ordinary.mate,false);assert.equal(JSON.stringify(initial),snapshot);
+assert(XQ.moves(initial,'r').some(m=>['x','y','X','Y'].every(k=>m[k]===ordinary.best[k])));
+console.log('Mate, stalemate, legal alternative, and immutable replay checks passed.');
