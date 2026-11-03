@@ -46,6 +46,7 @@ function paintPiece(parent,p,pieceSkin=skin){
  const fail=()=>{
   if(batch){batch.failed=true;readyPieceSkins.delete(batch.skin);for(const piece of batch.pieces){piece.art.setAttribute('opacity',0);piece.base.removeAttribute('visibility');}}
   else{art.setAttribute('opacity',0);base.removeAttribute('visibility');}
+  if(batch)updatePieceLoading(batch);
  };
  Promise.all(images.map(el=>loadPieceImage(el.getAttribute('data-art-src')))).then(()=>{
   if(!art.isConnected)return;
@@ -187,19 +188,36 @@ function applySkin(){
 // One board render is one visual transaction: never mix basic and HD pieces.
 let activePieceBatch=null,boardPieceBatch=null;
 const readyPieceSkins=new Set();
+function updatePieceLoading(batch){
+ if(batch!==boardPieceBatch||!batch.sealed)return;
+ if(batch.failed||batch.shown||!batch.pieces.length){
+  window.MQLoading?.hide('pieces');clearTimeout(batch.loadingTimer);
+  if(batch.failed&&!batch.notified){batch.notified=true;toast('高清棋子加载失败，已保留基础棋子，可继续使用');}
+  return;
+ }
+ const ready=batch.pieces.filter(piece=>piece.ready).length;
+ window.MQLoading?.show('pieces','高清棋子加载中 · '+ready+'/'+batch.pieces.length);
+}
 function flushPieceBatch(batch){
- if(!batch.sealed||batch.failed||batch!==boardPieceBatch||!batch.pieces.length)return;
- const alreadyDecoded=readyPieceSkins.has(batch.skin)&&batch.pieces.every(piece=>piece.images.every(image=>pieceImageCache.get(image.getAttribute('data-art-src'))?.ready));
- if(!alreadyDecoded&&!batch.pieces.every(piece=>piece.ready))return;
- for(const piece of batch.pieces){piece.art.setAttribute('opacity',1);piece.base.setAttribute('visibility','hidden');}
- readyPieceSkins.add(batch.skin);
+ if(!batch.sealed||batch!==boardPieceBatch)return;
+ if(!batch.failed&&batch.pieces.length){
+  const alreadyDecoded=readyPieceSkins.has(batch.skin)&&batch.pieces.every(piece=>piece.images.every(image=>pieceImageCache.get(image.getAttribute('data-art-src'))?.ready));
+  if(alreadyDecoded||batch.pieces.every(piece=>piece.ready)){
+   for(const piece of batch.pieces){piece.art.setAttribute('opacity',1);piece.base.setAttribute('visibility','hidden');}
+   readyPieceSkins.add(batch.skin);batch.shown=true;
+  }
+ }
+ updatePieceLoading(batch);
 }
 function draw(){
- const previous=activePieceBatch,batch={skin,pieces:[],sealed:false,failed:false};
- activePieceBatch=boardPieceBatch=batch;
- try{renderBoard();}finally{activePieceBatch=previous;batch.sealed=true;flushPieceBatch(batch);}
+ const previous=activePieceBatch,batch={skin,pieces:[],sealed:false,failed:false,shown:false};
+ clearTimeout(boardPieceBatch?.loadingTimer);activePieceBatch=boardPieceBatch=batch;
+ try{renderBoard();}finally{
+  activePieceBatch=previous;batch.sealed=true;flushPieceBatch(batch);
+  if(!batch.shown&&!batch.failed&&batch.pieces.length)batch.loadingTimer=setTimeout(()=>{if(batch!==boardPieceBatch||batch.shown)return;batch.failed=true;readyPieceSkins.delete(batch.skin);updatePieceLoading(batch)},45000);
+  document.body.dataset.aiBusy=String(busy&&mode==='ai'&&pageView==='game');
+ }
 }
-
 function renderBoard(){applySkin();let visualBoard=pageView==='home'?XQ.initial():board;let svg=$('board');svg.innerHTML=`<defs><linearGradient id="red-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#77271e"/><stop offset=".35" stop-color="#a13f2d"/><stop offset="1" stop-color="#ba5640"/></linearGradient><linearGradient id="black-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#141c18"/><stop offset=".4" stop-color="#29332c"/><stop offset="1" stop-color="#444b40"/></linearGradient></defs>`;
 if(skin==='playful'&&terrainMap!=='clean')drawPlayfulTerrain(svg,terrainMap);
 let grid=node('g',{'stroke':skin==='playful'?'#a39786':'#9f927a','stroke-width':skin==='playful'?'.6':'.85',fill:'none'});for(let y=0;y<10;y++)node('path',{d:`M56 ${60+y*56}H504`},grid);for(let x=0;x<9;x++){let xx=56+x*56;node('path',{d:x===0||x===8?`M${xx} 60V564`:`M${xx} 60V284 M${xx} 340V564`},grid);}if(skin!=='playful')node('rect',{x:51,y:55,width:458,height:514,'stroke-width':1.5},grid);for(let y of [60,452])node('path',{d:`M224 ${y}l112 112 M336 ${y}l-112 112`},grid);if(skin!=='playful')for(let y of [2,3,6,7])for(let x of y===2||y===7?[1,7]:[0,2,4,6,8]){let X=56+x*56,Y=60+y*56;for(let side of [-1,1])if(x+side>=0&&x+side<9)for(let v of [-1,1])node('path',{d:`M${X+side*6} ${Y+v*12}v${-v*6}h${side*6}`},grid);}
