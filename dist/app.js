@@ -387,7 +387,6 @@ let immersionTouch=0;$('board').addEventListener('touchend',e=>{if(!immersive||e
 function showResult(){
  if(mode==='ai'&&ended&&gameTrackEligible){const redWon=resignedSide?resignedSide==='b':turn==='b';window.MQRecords?.recordResult({gameId:gameRecordId,owner:gameRecordOwner,outcome:drawAgreed?'draw':redWon?'win':'loss',reason:drawAgreed?'draw':resignedSide?(resignedSide==='b'?'opponent_resign':'resign'):XQ.check(board,turn)?'checkmate':'stalemate',level:Number($('level').value),plies:history.length,startedAt:gameStartedAt,endedAt:Date.now()})}
  if(ended&&mode!=='online')window.MQReview?.capture({id:gameRecordId,owner:gameRecordOwner,board,history,turn,flipped,mode,winner:drawAgreed?'draw':resignedSide?(resignedSide==='r'?'b':'r'):turn==='r'?'b':'r',reason:drawAgreed?'draw':resignedSide?'resign':XQ.check(board,turn)?'checkmate':'stalemate'});
- if(ended)window.MQReview?.decorateResult();
  if(pageView!=='game'||!ended||$('resultDialog').open)return;
  const drawGame=drawAgreed;
  const redWon=resignedSide?resignedSide==='b':turn==='b';
@@ -396,6 +395,7 @@ function showResult(){
  $('resultSeal').style.color=drawGame?'#84775e':redWon?'#933f36':'#414a40';
  const who=drawGame?'双方握手言和':mode==='ai'?(redWon?'你赢得了本局':'山隐赢得了本局'):(redWon?'朱方赢得了本局':'墨方赢得了本局');
  $('resultReason').textContent=who+' · '+$('hint').textContent;
+ window.MQReview?.decorateResult();
  $('resultDialog').showModal();
 }
 function finishGame(){if($('resultDialog').open)$('resultDialog').close();navigate('home')}
