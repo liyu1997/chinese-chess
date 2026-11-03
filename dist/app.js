@@ -416,7 +416,17 @@ $('restartGame').onclick=()=>{if(mode==='online'){window.MQOnline?.open();return
 document.querySelectorAll('[data-game-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.gameSkin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换皮肤');});
 $('helpGame').onclick=()=>{$('gameMore').open=false;$('dialog').showModal()};
 window.addEventListener('hashchange',()=>applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':location.hash==='#settings'?'settings':'home'));
-draftMode=mode;applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':location.hash==='#settings'?'settings':'home');
+// Every fresh visit starts at home; only valid room invitations bypass it.
+function initialView(){
+ const invite=new URL(location.href).searchParams.get('room');
+ const view=/^[A-Fa-f0-9]{8}$/.test(invite||'')?'game':'home';
+ const url=new URL(location.href);
+ if(view==='home')url.searchParams.delete('room');
+ url.hash=view;
+ window.history.replaceState(null,'',url);
+ return view;
+}
+draftMode=mode;applyView(initialView());
 
 // Board changes are purely visual and preserve the current game.
 document.querySelectorAll('[data-map]').forEach(btn=>btn.onclick=()=>{terrainMap=btn.dataset.map;try{localStorage.setItem('jing-terrain-map',terrainMap)}catch{}draw();toast(terrainMap==='clean'?'已切换为素净棋盘':'已切换为柳岸行营');});
