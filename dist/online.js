@@ -210,7 +210,14 @@ window.addEventListener('hashchange',()=>{if(mode==='online'&&active){render();c
  user=(await api('/me')).user;renderUser();
  if(pendingInvite){if(dialog?.open)return;if(user)await joinInvite(pendingInvite);else login(()=>joinInvite(pendingInvite));return}
  if(!user)return;let saved;try{saved=JSON.parse(localStorage.getItem(KEY))}catch{}if(saved?.user!==user.id||!saved?.code)return;
- room=await api('/chess/rooms/'+saved.code);active=true;connected=true;sampleClock(room);remember();connectSocket();if(location.hash==='#game')enterGame();else{const b=$('continueGame');b.hidden=false;b.textContent='返回联机房间 →';b.onclick=()=>enterGame()}schedule();
+ // A remembered room is an explicit resume action, never a fresh-entry redirect.
+ const b=$('continueGame');b.hidden=false;b.textContent='返回联机房间 →';
+ b.onclick=async()=>{
+  if(b.disabled)return;b.disabled=true;
+  try{installRoom(await api('/chess/rooms/'+saved.code))}
+  catch(e){toast(e.name==='AbortError'?'连接超时，请重试':e.message);if([404,410].includes(e.status)){try{localStorage.removeItem(KEY)}catch{}b.hidden=true}}
+  finally{b.disabled=false}
+ };
 }catch{renderUser();if(pendingInvite&&!dialog?.open){const d=modal('邀请房间连接中断','<p>请检查网络后重试，邀请信息已保留。</p><button class="main">重试进入房间</button><button class="sub">先玩单机</button>');d.querySelector('.sub').onclick=()=>leaveInvite();d.querySelector('.main').onclick=()=>{if(user)joinInvite(pendingInvite);else login(()=>joinInvite(pendingInvite))}}}})();
 })();
 
