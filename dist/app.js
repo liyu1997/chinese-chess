@@ -243,13 +243,15 @@ document.querySelectorAll('[data-skin],[data-game-skin]').forEach(btn=>{let acti
 const repeatedSide=['r','b'].find(side=>XQ.checkStreak(history,board,side)>=5);
 $('longCheckWarning').hidden=pageView!=='game'||ended||!repeatedSide;
 $('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';syncLevelPicker();$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));paintPiece(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));paintPiece(icon,turn+'k');}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));paintPiece(icon,turn+'k');}if(!ended){$('status').textContent=busy?(Number($('level').value)>=5?`山隐正在凝思（最多约${XQ.thinkingBudget(board,XQ.levels[Number($('level').value)],{plies:history.length}).time/1000}秒）…`:'山隐正在凝思…'):(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}window.MQOnline?.render();}
-document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'温玉雅宋',sans:'疏朗 · 黑体',playful:'玲珑将相',benteng:'妙棋手',mocheng:'墨橙圆章'}[skin]));});
+document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{window.MQAnalytics?.track('skin_changed',{from_skin:skin,to_skin:btn.dataset.skin});skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'温玉雅宋',sans:'疏朗 · 黑体',playful:'玲珑将相',benteng:'妙棋手',mocheng:'墨橙圆章'}[skin]));});
 $('board').onclick=e=>{let p=$('board').createSVGPoint();p.x=e.clientX;p.y=e.clientY;p=p.matrixTransform($('board').getScreenCTM().inverse());let x=Math.round((p.x-56)/56),y=Math.round((p.y-60)/56);if(flipped){x=8-x;y=9-y}if(x>=0&&x<9&&y>=0&&y<10)click(x,y)};
 function click(x,y){if(mode==='online'&&!window.MQOnline?.canMove())return;if(pageView!=='game'||ended||busy||mode==='ai'&&turn==='b')return;if(board[y][x]?.[0]===turn){selected=selected?.x===x&&selected?.y===y?null:{x,y};draw();return}if(selected){let m=legal.find(m=>m.x===selected.x&&m.y===selected.y&&m.X===x&&m.Y===y);if(m){if(mode==='online'){window.MQOnline.move(m);return}move(m);computer()}else toast('此处不可落子')}}
 function audio(){if(muted)return;try{let ctx=window.audioCtx||(window.audioCtx=new (window.AudioContext||window.webkitAudioContext)());ctx.resume();let o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(680,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(210,ctx.currentTime+.1);g.gain.setValueAtTime(.12,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.14);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.15)}catch{}}
+function analyticsGame(){return {game_id:gameRecordId,mode,level:Number($('level').value),skin}}
 function move(m){
  let p=board[m.y][m.x],captured=board[m.Y][m.X],mover=turn;
  history.push({board:board.map(r=>r.slice()),turn,last,label:`${turn==='r'?'朱':'墨'} · ${XQ.names[p[0]][p[1]]} ${m.x+1},${m.y+1} → ${m.X+1},${m.Y+1}${captured?' · 吃'+XQ.names[captured[0]][captured[1]]:''}`,captured:!!captured});
+ if(history.length===1){window.MQAnalytics?.game(analyticsGame());window.MQAnalytics?.firstMove({...analyticsGame(),since_start_ms:Math.max(0,Date.now()-gameStartedAt)});}
  board=XQ.play(board,m);turn=turn==='r'?'b':'r';last=m;selected=null;audio();legal=XQ.moves(board,turn);ended=!legal.length;
  if(ended){$('status').textContent=turn==='r'?'墨方获胜':'朱方获胜';$('hint').textContent=XQ.check(board,turn)?'将死 · 此局已定':'困毙 · 无子可行';toast($('status').textContent)}
  save();draw();
@@ -317,10 +319,10 @@ function rememberAI(position,m){
 function cancelComputer(){if(aiWorker){aiWorker.terminate();aiWorker=null;}}
 function computer(){
  if($('resignDialog').open||$('longCheckDialog').open||$('drawOfferDialog').open||pageView!=='game'||busy||mode!=='ai'||turn!=='b'||ended)return;
- busy=true;draw();const e=epoch,level=Number($('level').value),position=aiPositionKey();
+ const analyticsThinkStart=performance.now();busy=true;draw();const e=epoch,level=Number($('level').value),position=aiPositionKey();
  const context={plies:history.length,style:aiStyle,recent:Array.isArray(aiRecent[position])?aiRecent[position]:[]};
- const finish=m=>{if(e!==epoch)return;cancelComputer();busy=false;if(m&&proposeLongCheckDraw(m))return;rememberAI(position,m);if(m)move(m);else draw();};
- const fallback=()=>{if(level>=5){cancelComputer();busy=false;draw();$('hint').textContent='电脑暂时无法落子，请刷新后重试，当前棋局已保存。';toast('电脑暂时无法落子，请刷新重试');return;}cancelComputer();setTimeout(()=>{if(e!==epoch)return;finish(XQ.ai(board,Math.min(level,3),Math.random,context));},30);};
+ const finish=m=>{if(e!==epoch)return;window.MQAnalytics?.track('ai_move_completed',{...analyticsGame(),duration_ms:Math.round(performance.now()-analyticsThinkStart),plies:history.length});cancelComputer();busy=false;if(m&&proposeLongCheckDraw(m))return;rememberAI(position,m);if(m)move(m);else draw();};
+ const fallback=()=>{window.MQAnalytics?.track('game_error',{category:'ai_worker_failure',level});if(level>=5){cancelComputer();busy=false;draw();$('hint').textContent='电脑暂时无法落子，请刷新后重试，当前棋局已保存。';toast('电脑暂时无法落子，请刷新重试');return;}cancelComputer();setTimeout(()=>{if(e!==epoch)return;finish(XQ.ai(board,Math.min(level,3),Math.random,context));},30);};
  setTimeout(()=>{
   if(e!==epoch)return;
   try{
@@ -372,19 +374,20 @@ $('resignDialog').addEventListener('cancel',event=>{event.preventDefault();cance
 function save(){if(mode==='online')return;try{localStorage.setItem('jing-xiangqi-v1',JSON.stringify({gameRecordId,gameRecordOwner,gameStartedAt,gameTrackEligible,board,turn,history,mode,flipped,last,ended,drawAgreed,resignedSide,level:$('level').value,status:$('status').textContent,hint:$('hint').textContent}));}catch{$('saveStatus').textContent='当前浏览器无法保存棋局'}}
 function reset(){gameRecordId=crypto.randomUUID?.()||('game-'+Date.now()+'-'+Math.random().toString(36).slice(2));gameRecordOwner=window.MQRecords?.owner()??null;gameStartedAt=Date.now();gameTrackEligible=mode==='ai';aiStyle=['active','solid','flank'][Math.floor(Math.random()*3)];drawAgreed=false;drawOffer=null;resignedSide=null;pendingResign=null;for(const id of ['drawOfferDialog','longCheckDialog','resignDialog'])if($(id).open)$(id).close();if($('resultDialog').open)$('resultDialog').close();epoch++;cancelComputer();busy=false;board=XQ.initial();turn='r';selected=null;history=[];ended=false;last=null;legal=XQ.moves(board,turn);save();draw()}
 function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('toast').style.opacity=0,2200)}
-$('undo').onclick=()=>{if(mode==='online')return;if(!history.length||busy)return;epoch++;let n=mode==='ai'&&turn==='r'&&history.length>1?2:1;while(n--&&history.length){let h=history.pop();board=h.board;turn=h.turn;last=h.last;}ended=false;drawAgreed=false;resignedSide=null;pendingResign=null;selected=null;legal=XQ.moves(board,turn);save();draw();toast('棋局已退回上一步')};$('new').onclick=startNewGame;function showConfirm(fn){let d=document.createElement('dialog');d.innerHTML='<div class="eyebrow">A NEW BEGINNING</div><h2>重新开启一局？</h2><p>当前棋局将被新的棋局替换。</p><button class="primary">确认新局 ↗</button><button style="width:100%;padding:18px">继续此局</button>';document.body.append(d);let bs=d.querySelectorAll('button');bs[0].onclick=()=>{d.close();d.remove();fn()};bs[1].onclick=()=>{d.close();d.remove();navigate('game')};d.showModal()}
+$('undo').onclick=()=>{if(mode==='online')return;if(!history.length||busy)return;window.MQAnalytics?.track('undo_used',analyticsGame());epoch++;let n=mode==='ai'&&turn==='r'&&history.length>1?2:1;while(n--&&history.length){let h=history.pop();board=h.board;turn=h.turn;last=h.last;}ended=false;drawAgreed=false;resignedSide=null;pendingResign=null;selected=null;legal=XQ.moves(board,turn);save();draw();toast('棋局已退回上一步')};$('new').onclick=startNewGame;function showConfirm(fn){let d=document.createElement('dialog');d.innerHTML='<div class="eyebrow">A NEW BEGINNING</div><h2>重新开启一局？</h2><p>当前棋局将被新的棋局替换。</p><button class="primary">确认新局 ↗</button><button style="width:100%;padding:18px">继续此局</button>';document.body.append(d);let bs=d.querySelectorAll('button');bs[0].onclick=()=>{d.close();d.remove();fn()};bs[1].onclick=()=>{d.close();d.remove();navigate('game')};d.showModal()}
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{draftMode=b.dataset.mode;draw()});$('flip').onclick=()=>{flipped=!flipped;draw();save()};$('sound').onclick=()=>{setSoundEnabled(muted);audio()};$('help').onclick=()=>$('dialog').showModal();$('close').onclick=$('understood').onclick=()=>$('dialog').close();
 try{let s=JSON.parse(localStorage.getItem('jing-xiangqi-v1'));if(s&&s.board.length===10){gameRecordId=s.gameRecordId||gameRecordId;gameRecordOwner=s.gameRecordOwner??null;gameStartedAt=s.gameStartedAt||Date.now();gameTrackEligible=typeof s.gameTrackEligible==='boolean'?s.gameTrackEligible:!s.ended;({board,turn,history,mode,flipped,last,ended}=s);drawAgreed=s.drawAgreed===true;resignedSide=['r','b'].includes(s.resignedSide)?s.resignedSide:null;if(ended&&s.status?.includes('和棋')&&!drawAgreed)ended=false;if(s.level)$('level').value=s.level;if(ended){$('status').textContent=s.status;$('hint').textContent=s.hint}}}catch{}legal=XQ.moves(board,turn);
 
 // Immersive view hides all surrounding UI; the board remains fully interactive.
 let immersive=false;
-function setImmersive(on){if(on&&pageView!=='game')return;immersive=on;document.body.classList.toggle('immersive',on);$('immersive').setAttribute('aria-pressed',String(on));if(on){document.activeElement?.blur();$('board').focus({preventScroll:true});if(ended)showResult()}else{$('immersive').focus({preventScroll:true})}}
+function setImmersive(on){if(on&&pageView!=='game')return;if(on!==immersive)window.MQAnalytics?.track('immersive_changed',{enabled:on});immersive=on;document.body.classList.toggle('immersive',on);$('immersive').setAttribute('aria-pressed',String(on));if(on){document.activeElement?.blur();$('board').focus({preventScroll:true});if(ended)showResult()}else{$('immersive').focus({preventScroll:true})}}
 $('immersive').onclick=()=>setImmersive(!immersive);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&immersive&&!$('resultDialog').open){e.preventDefault();setImmersive(false)}});
 $('board').addEventListener('dblclick',e=>{if(immersive&&!e.target.closest('.piece')){e.preventDefault();setImmersive(false)}});
 let immersionTouch=0;$('board').addEventListener('touchend',e=>{if(!immersive||e.target.closest('.piece'))return;let now=Date.now();if(now-immersionTouch<330){e.preventDefault();setImmersive(false);immersionTouch=0}else immersionTouch=now},{passive:false});
 
 function showResult(){
+ if(ended&&mode!=='online')window.MQAnalytics?.end({...analyticsGame(),outcome:drawAgreed?'draw':(resignedSide?resignedSide==='b':turn==='b')?(mode==='ai'?'win':'red_win'):(mode==='ai'?'loss':'black_win'),reason:drawAgreed?'draw':resignedSide?'resign':XQ.check(board,turn)?'checkmate':'stalemate',duration_ms:Math.max(0,Date.now()-gameStartedAt),plies:history.length});
  if(mode==='ai'&&ended&&gameTrackEligible){const redWon=resignedSide?resignedSide==='b':turn==='b';window.MQRecords?.recordResult({gameId:gameRecordId,owner:gameRecordOwner,outcome:drawAgreed?'draw':redWon?'win':'loss',reason:drawAgreed?'draw':resignedSide?(resignedSide==='b'?'opponent_resign':'resign'):XQ.check(board,turn)?'checkmate':'stalemate',level:Number($('level').value),plies:history.length,startedAt:gameStartedAt,endedAt:Date.now()})}
  if(ended&&mode!=='online')window.MQReview?.capture({id:gameRecordId,owner:gameRecordOwner,board,history,turn,flipped,mode,winner:drawAgreed?'draw':resignedSide?(resignedSide==='r'?'b':'r'):turn==='r'?'b':'r',reason:drawAgreed?'draw':resignedSide?'resign':XQ.check(board,turn)?'checkmate':'stalemate'});
  if(pageView!=='game'||!ended||$('resultDialog').open)return;
@@ -400,7 +403,7 @@ function showResult(){
 }
 function finishGame(){if($('resultDialog').open)$('resultDialog').close();navigate('home')}
 $('exitImmersive').onclick=()=>setImmersive(false);
-$('playAgain').onclick=()=>{if(mode==='online'){window.MQOnline?.open();return}reset();if(immersive)$('board').focus({preventScroll:true})};
+$('playAgain').onclick=()=>{if(mode==='online'){window.MQOnline?.open();return}reset();window.MQAnalytics?.game(analyticsGame());if(immersive)$('board').focus({preventScroll:true})};
 $('finishGame').onclick=finishGame;
 $('resultDialog').addEventListener('cancel',e=>{e.preventDefault();$('resultDialog').close()});
 
@@ -409,6 +412,7 @@ $('resultDialog').addEventListener('cancel',e=>{e.preventDefault();$('resultDial
 const boardSection=document.querySelector('.game');
 function navigate(view){if(location.hash==='#'+view)applyView(view);else location.hash=view}
 function applyView(view){
+ const analyticsViewStart=performance.now();
  pageView=['game','learn','settings'].includes(view)?view:'home';
  if(pageView!=='game'){
   if(immersive)setImmersive(false);
@@ -422,18 +426,18 @@ function applyView(view){
  $('learnPage').hidden=pageView!=='learn';$('settingsPage').hidden=pageView!=='settings';syncSoundSetting();
  $('continueGame').hidden=!history.length||ended;
  $('gameMore').open=false;
- draw();window.scrollTo(0,0);scheduleHomeSkinFold();
+ draw();window.MQAnalytics?.page(pageView,skin,performance.now()-analyticsViewStart);window.scrollTo(0,0);scheduleHomeSkinFold();
  if(pageView==='game'){if(ended)showResult();else computer()}
 }
 function startNewGame(){
  if(draftMode==='online'){window.MQOnline?.open();return}
- const start=()=>{window.MQOnline?.suspend();mode=draftMode;reset();navigate('game')};
+ const start=()=>{window.MQOnline?.suspend();mode=draftMode;reset();window.MQAnalytics?.game(analyticsGame());navigate('game')};
  if(history.length&&!ended)showConfirm(start);else start();
 }
 $('continueGame').onclick=()=>navigate('game');
 $('backHome').onclick=()=>{save();navigate('home')};
-$('restartGame').onclick=()=>{if(mode==='online'){window.MQOnline?.open();return}const start=()=>{reset();$('gameMore').open=false};if(history.length&&!ended)showConfirm(start);else start()};
-document.querySelectorAll('[data-game-skin]').forEach(btn=>btn.onclick=()=>{skin=btn.dataset.gameSkin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换皮肤');});
+$('restartGame').onclick=()=>{if(mode==='online'){window.MQOnline?.open();return}const start=()=>{reset();window.MQAnalytics?.game(analyticsGame());$('gameMore').open=false};if(history.length&&!ended)showConfirm(start);else start()};
+document.querySelectorAll('[data-game-skin]').forEach(btn=>btn.onclick=()=>{window.MQAnalytics?.track('skin_changed',{from_skin:skin,to_skin:btn.dataset.gameSkin});skin=btn.dataset.gameSkin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换皮肤');});
 $('helpGame').onclick=()=>{$('gameMore').open=false;$('dialog').showModal()};
 window.addEventListener('hashchange',()=>applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':location.hash==='#settings'?'settings':'home'));
 // Every fresh visit starts at home; only valid room invitations bypass it.
@@ -536,5 +540,6 @@ scheduleHomeSkinFold();
 
 // Controls are live only after all core handlers are installed.
 window.MQStartup?.ready();
+
 
 

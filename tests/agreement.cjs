@@ -3,7 +3,7 @@ const vm=require('node:vm');const fs=require('node:fs');const E=require('../dist
 const app=fs.readFileSync(require.resolve('../dist/app.js'),'utf8');
 function game(board=E.initial()){
  const elements={};const $=id=>elements[id]||(elements[id]={textContent:'',open:false,focus(){},showModal(){this.open=true;this.shown=(this.shown||0)+1},close(){this.open=false},addEventListener(){}});
- const c=vm.createContext({XQ:E,$,board,turn:'r',history:[],last:null,selected:null,legal:E.moves(board,'r'),ended:false,drawAgreed:false,drawOffer:null,mode:'local',busy:false,pageView:'game',epoch:0,audio(){},save(){},draw(){},toast(t){c.toastText=t},showResult(){c.results=(c.results||0)+1},computer(){}});
+ const c=vm.createContext({window:{},XQ:E,$,board,turn:'r',history:[],last:null,selected:null,legal:E.moves(board,'r'),ended:false,drawAgreed:false,drawOffer:null,mode:'local',busy:false,pageView:'game',epoch:0,audio(){},save(){},draw(){},toast(t){c.toastText=t},showResult(){c.results=(c.results||0)+1},computer(){}});
  vm.runInContext(app.slice(app.indexOf('function move(m){'),app.indexOf('\nfunction computer()')),c);return {c,$,move(m){assert(E.moves(c.board,c.turn).some(a=>JSON.stringify(a)===JSON.stringify(m)),'test move must be legal');c.move(m)}};
 }
 let g=game();g.c.offerDraw();assert(!g.c.ended);g.c.acceptDraw();assert.equal(g.c.drawOffer.phase,'respond');assert(!g.c.ended,'sending a proposal is not agreement');g.c.declineDraw();assert(!g.c.ended,'declining keeps game active');g.c.offerDraw();g.c.acceptDraw();g.c.acceptDraw();assert(g.c.ended&&g.c.drawAgreed);assert.equal(g.c.results,1);
@@ -18,3 +18,4 @@ let undo=g.c.history.pop();g.c.board=undo.board;g.c.turn=undo.turn;assert.equal(
 g.move({x:3,y:2,X:2,Y:2});assert.equal(E.checkStreak(g.c.history,g.c.board,'r'),0);
 g=game();g.c.history=Array.from({length:120},(_,i)=>({board:E.initial(),turn:i%2?'b':'r',captured:false}));g.move({x:0,y:6,X:0,Y:5});assert(!g.c.ended,'120 non-capturing plies must not auto-draw');
 console.log('Agreement, refusal, AI response, repetition, 120 plies, five-check boundary, quiet move and undo checks passed.');
+

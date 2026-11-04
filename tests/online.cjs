@@ -13,10 +13,10 @@ console.log('Online entry, turn guard, server submission, board synchronization 
 let readyCallback;const bootstrap=vm.createContext({window:{},document:{readyState:'loading',addEventListener(name,fn){assert.equal(name,'DOMContentLoaded');readyCallback=fn}}});vm.runInContext(source,bootstrap);assert.equal(typeof readyCallback,'function');assert.equal(bootstrap.window.MQOnline,undefined,'legacy service worker injection must wait for app initialization');
 (async()=>{
  const invite=vm.createContext({URL,location:{origin:'https://xiangqi.jujuli.com.cn'},room:{code:'AABBCCDD'}});vm.runInContext(source.slice(source.indexOf('function inviteLink(){'),source.indexOf('\nasync function copyLink')),invite);assert.equal(invite.inviteLink(),'https://xiangqi.jujuli.com.cn/?room=AABBCCDD#game');
- let request,installed;const elements={};const dialog={querySelector(key){if(key==='.resume')return null;return elements[key]||(elements[key]={disabled:false,value:'',textContent:''})},querySelectorAll(){return []},close(){}};
- const lobby=vm.createContext({user:{id:'a'},pendingInvite:null,room:null,randomCode:()=> '1234ABCD',modal:()=>dialog,api:async(path,data)=>{request={path,data};return {code:data.code}},installRoom:r=>{installed=r}});vm.runInContext(source.slice(source.indexOf('function open(){'),source.indexOf('\nfunction inviteLink')),lobby);lobby.open();assert.equal(elements['.mq-code-preview'].textContent,'1234ABCD');assert.equal(request,undefined,'previewing a room must not create it');await elements['.create'].onclick();assert.equal(request.data.code,'1234ABCD');assert.equal(installed.code,'1234ABCD');
+ let request,installed;const elements={};const dialog={setAttribute(){},removeAttribute(){},querySelector(key){if(key==='.resume')return null;return elements[key]||(elements[key]={disabled:false,value:'',textContent:''})},querySelectorAll(){return []},close(){}};
+ const lobby=vm.createContext({window:{},user:{id:'a'},pendingInvite:null,room:null,randomCode:()=> '1234ABCD',modal:()=>dialog,api:async(path,data)=>{request={path,data};return {code:data.code}},installRoom:r=>{installed=r}});vm.runInContext(source.slice(source.indexOf('function open(){'),source.indexOf('\nfunction inviteLink')),lobby);lobby.open();assert.equal(elements['.mq-code-preview'].textContent,'1234ABCD');assert.equal(request,undefined,'previewing a room must not create it');await elements['.create'].onclick();assert.equal(request.data.code,'1234ABCD');assert.equal(installed.code,'1234ABCD');
  // Local display responds immediately, but the authoritative room is untouched until confirmed.
- let rejectMove;Object.assign(c,{active:true,connected:true,sending:false,generation:1,timer:0,socket:null,audio(){},render(){},clearTimeout(){},schedule(){},api:()=>new Promise((resolve,reject)=>{rejectMove=reject})});
+ let rejectMove;Object.assign(c,{active:true,connected:true,sending:false,generation:1,timer:0,socket:null,monotonic:()=>0,audio(){},render(){},clearTimeout(){},schedule(){},api:()=>new Promise((resolve,reject)=>{rejectMove=reject})});
  c.room={code:'AABBCCDD',board:XQ.initial(),turn:'r',last:null,moves:[],status:'playing',winner:null,revision:2};c.board=XQ.initial();c.turn='r';
  vm.runInContext(source.slice(source.indexOf('async function action(type'),source.indexOf('\nfunction confirmation')),c);
  const operation=c.action('move',{x:0,y:6,X:0,Y:5});assert.equal(c.board[5][0],'rp');assert.equal(c.room.board[6][0],'rp');assert.equal(c.sending,true);
@@ -35,4 +35,5 @@ let readyCallback;const bootstrap=vm.createContext({window:{},document:{readySta
  memory.box.querySelector('select').value='other@example.com';memory.box.querySelector('select').onchange();assert.equal(password.value,'','switching accounts clears the previous password');
  console.log('Invite link, confirm-only room creation, optimistic rollback, account selection and native password storage checks passed.');
 })().catch(e=>{console.error(e);process.exitCode=1});
+
 
