@@ -30,7 +30,7 @@ function renderUser(){
  window.dispatchEvent(new CustomEvent('mq-auth',{detail:{user}}));
  const letter=document.getElementById('avatarLetter');if(letter)letter.textContent=user?(user.username||'棋').trim().slice(0,1).toUpperCase():'铭';
  const name=document.getElementById('profileName'),hint=document.getElementById('profileHint'),loginButton=document.getElementById('profileLogin'),logoutButton=document.getElementById('profileLogout');
- if(name)name.textContent=user?user.username:'尚未登录';
+ if(name){name.toggleAttribute('data-no-i18n',!!user);name.textContent=user?user.username:'尚未登录';}
  if(hint)hint.textContent=user?'聚聚里桌游统一账号 · 已登录':'登录后可在妙棋手与桌游大厅使用同一账号';
  if(loginButton)loginButton.hidden=!!user;
  if(logoutButton)logoutButton.hidden=!user;
@@ -228,6 +228,7 @@ window.addEventListener('hashchange',()=>{if(mode==='online'&&active){render();c
  };
 }catch{renderUser();if(pendingInvite&&!dialog?.open){const d=modal('邀请房间连接中断','<p>请检查网络后重试，邀请信息已保留。</p><button class="main">重试进入房间</button><button class="sub">先玩单机</button>');d.querySelector('.sub').onclick=()=>leaveInvite();d.querySelector('.main').onclick=()=>{if(user)joinInvite(pendingInvite);else login(()=>joinInvite(pendingInvite))}}}})();
 })();
+
 
 
 

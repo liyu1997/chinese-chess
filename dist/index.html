@@ -19,7 +19,7 @@
 <meta name="twitter:image" content="https://xiangqi.jujuli.com.cn/assets/miaoqishou-icon.png">
 <link rel="image_src" href="https://xiangqi.jujuli.com.cn/assets/miaoqishou-icon.png">
 <link rel="icon" type="image/png" href="https://xiangqi.jujuli.com.cn/assets/miaoqishou-icon.png">
-<link rel="apple-touch-icon" href="./assets/miaoqishou-icon.png?v=grandpa1"><link rel="stylesheet" href="style.css?v=mobile-board-align-20261104"><style id="online-mode-entry">body[data-page="home"] .home-panel .segmented>button{flex:1;width:auto}body[data-page="home"] #onlineMode{opacity:.6;cursor:default;background:none}#onlineMode small{display:block;margin-top:2px;font-size:8px;font-weight:400;letter-spacing:.5px;line-height:1.2}</style><link rel="preload" as="script" href="engine.js?v=quick-master-20261103" fetchpriority="high"><link rel="preload" as="script" href="app.js?v=analytics-v1-20261104" fetchpriority="high"><style>#startupNotice{font:12px/1.7 system-ui,sans-serif;color:#796b58;padding:8px 12px;text-align:center}#startupNotice[hidden]{display:none}#startupNotice button{font:inherit;color:#934b2f;text-decoration:underline;padding:6px;cursor:pointer}body:not([data-core-ready]) #board{min-height:180px;aspect-ratio:584/648;width:100%}</style>
+<link rel="apple-touch-icon" href="./assets/miaoqishou-icon.png?v=grandpa1"><link rel="stylesheet" href="style.css?v=language-20261104"><style id="online-mode-entry">body[data-page="home"] .home-panel .segmented>button{flex:1;width:auto}body[data-page="home"] #onlineMode{opacity:.6;cursor:default;background:none}#onlineMode small{display:block;margin-top:2px;font-size:8px;font-weight:400;letter-spacing:.5px;line-height:1.2}</style><link rel="preload" as="script" href="engine.js?v=quick-master-20261103" fetchpriority="high"><link rel="preload" as="script" href="app.js?v=language-20261104" fetchpriority="high"><style>#startupNotice{font:12px/1.7 system-ui,sans-serif;color:#796b58;padding:8px 12px;text-align:center}#startupNotice[hidden]{display:none}#startupNotice button{font:inherit;color:#934b2f;text-decoration:underline;padding:6px;cursor:pointer}body:not([data-core-ready]) #board{min-height:180px;aspect-ratio:584/648;width:100%}</style>
 <style id="loading-feedback">
 .mq-spinner{display:inline-block;box-sizing:border-box;width:16px;height:16px;flex:0 0 16px;border:2px solid #dbcdb8;border-top-color:#d57c32;border-radius:50%;animation:mq-spin .85s linear infinite}
 @keyframes mq-spin{to{transform:rotate(360deg)}}
@@ -39,6 +39,7 @@ body[data-ai-busy="true"][data-page="game"] #status::after,body[data-network-bus
 <section id="profileAccount" class="profile-account" aria-label="账号信息"><div class="profile-account-mark">棋</div><div class="profile-account-copy"><strong id="profileName">尚未登录</strong><small id="profileHint">登录后可在妙棋手与桌游大厅使用同一账号</small></div><div class="profile-account-actions"><button id="profileLogin" type="button">登录 / 注册</button><button id="profileLogout" type="button" hidden>退出登录</button></div></section>
 <section class="preferences-card" aria-label="个人设置">
 <h2 class="profile-section-title">偏好设置</h2>
+<label class="preference-row language-preference" for="languageSetting"><span><strong>界面语言</strong><small>选择你习惯使用的语言</small></span><select id="languageSetting" aria-label="界面语言"><option value="zh-CN" lang="zh-CN" data-no-i18n>中文</option><option value="en" lang="en" data-no-i18n>English</option></select></label>
 <label class="preference-row" for="soundSetting"><span><strong>落子音效</strong><small>落子与吃子时播放声音</small></span><input id="soundSetting" type="checkbox" role="switch" aria-label="落子音效"></label>
 <div class="preference-scene"><div class="terrain-picker"><small>棋盘场景</small><div><button data-map="riverside" aria-pressed="true">柳岸行营</button><button data-map="clean" aria-pressed="false">素净棋盘</button></div></div></div>
 <button id="help" class="preference-row preference-help"><span><strong>游戏说明</strong><small>了解基本走法和对弈规则</small></span><span aria-hidden="true">↗</span></button>
@@ -77,7 +78,7 @@ body[data-ai-busy="true"][data-page="game"] #status::after,body[data-network-bus
 })();
 
 window.MQStartup={ready(){document.body.dataset.coreReady="true";n.hidden=true},failed(){if(document.body.dataset.coreReady)return;n.hidden=false;n.dataset.error="true";label.textContent="对弈功能加载较慢，基础棋盘已保留。请检查网络或重新加载。";retry.hidden=false}};setTimeout(()=>window.MQStartup.failed(),8000);document.addEventListener("click",e=>{if(document.body.dataset.coreReady)return;if(e.target.closest("button:not(#reloadStartup)")){e.preventDefault();e.stopImmediatePropagation();n.hidden=false;label.textContent="正在加载对弈功能，请稍候…";retry.hidden=false} },true);})();
-</script><script defer src="analytics-config.js?v=analytics-v1"></script><script defer src="analytics.js?v=analytics-v1"></script><script defer onerror="window.MQStartup.failed()" fetchpriority="high" src="engine.js?v=quick-master-20261103"></script><script defer src="terrain.js?v=fast-v1"></script><script defer onerror="window.MQStartup.failed()" fetchpriority="high" src="app.js?v=analytics-v1-20261104"></script><script defer src="lessons.js?v=academy18"></script><script defer src="academy.js?v=academy18"></script><script defer src="auth-memory.js?v=invite-v1"></script><script defer src="review.js?v=postgame-v2"></script><script defer src="records.js?v=postgame-v2-clock-records-v1"></script><script defer src="online.js?v=analytics-v1-20261104"></script>
+</script><script defer src="i18n.js?v=language-20261104"></script><script defer src="analytics-config.js?v=analytics-v1"></script><script defer src="analytics.js?v=analytics-v1"></script><script defer onerror="window.MQStartup.failed()" fetchpriority="high" src="engine.js?v=quick-master-20261103"></script><script defer src="terrain.js?v=fast-v1"></script><script defer onerror="window.MQStartup.failed()" fetchpriority="high" src="app.js?v=language-20261104"></script><script defer src="lessons.js?v=academy18"></script><script defer src="academy.js?v=academy18"></script><script defer src="auth-memory.js?v=invite-v1"></script><script defer src="review.js?v=postgame-v2"></script><script defer src="records.js?v=postgame-v2-clock-records-v1"></script><script defer src="online.js?v=language-20261104"></script>
 
 <script>
 // Skin-scoped vector icons; native controls and game handlers remain intact.
@@ -131,6 +132,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 
 </script>
 </body></html>
+
 
 
 

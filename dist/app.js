@@ -371,7 +371,7 @@ $('confirmResign').onclick=()=>{if(pendingResign)finishResignation(pendingResign
 $('cancelResign').onclick=cancelResignation;
 $('resignDialog').addEventListener('cancel',event=>{event.preventDefault();cancelResignation()});
 
-function save(){if(mode==='online')return;try{localStorage.setItem('jing-xiangqi-v1',JSON.stringify({gameRecordId,gameRecordOwner,gameStartedAt,gameTrackEligible,board,turn,history,mode,flipped,last,ended,drawAgreed,resignedSide,level:$('level').value,status:$('status').textContent,hint:$('hint').textContent}));}catch{$('saveStatus').textContent='当前浏览器无法保存棋局'}}
+function save(){if(mode==='online')return;try{localStorage.setItem('jing-xiangqi-v1',JSON.stringify({gameRecordId,gameRecordOwner,gameStartedAt,gameTrackEligible,board,turn,history,mode,flipped,last,ended,drawAgreed,resignedSide,level:$('level').value,status:globalThis.MQI18n?.source($('status'))??$('status').textContent,hint:globalThis.MQI18n?.source($('hint'))??$('hint').textContent}));}catch{$('saveStatus').textContent='当前浏览器无法保存棋局'}}
 function reset(){gameRecordId=crypto.randomUUID?.()||('game-'+Date.now()+'-'+Math.random().toString(36).slice(2));gameRecordOwner=window.MQRecords?.owner()??null;gameStartedAt=Date.now();gameTrackEligible=mode==='ai';aiStyle=['active','solid','flank'][Math.floor(Math.random()*3)];drawAgreed=false;drawOffer=null;resignedSide=null;pendingResign=null;for(const id of ['drawOfferDialog','longCheckDialog','resignDialog'])if($(id).open)$(id).close();if($('resultDialog').open)$('resultDialog').close();epoch++;cancelComputer();busy=false;board=XQ.initial();turn='r';selected=null;history=[];ended=false;last=null;legal=XQ.moves(board,turn);save();draw()}
 function toast(t){$('toast').textContent=t;$('toast').style.opacity=1;clearTimeout(window.toastTimer);window.toastTimer=setTimeout(()=>$('toast').style.opacity=0,2200)}
 $('undo').onclick=()=>{if(mode==='online')return;if(!history.length||busy)return;window.MQAnalytics?.track('undo_used',analyticsGame());epoch++;let n=mode==='ai'&&turn==='r'&&history.length>1?2:1;while(n--&&history.length){let h=history.pop();board=h.board;turn=h.turn;last=h.last;}ended=false;drawAgreed=false;resignedSide=null;pendingResign=null;selected=null;legal=XQ.moves(board,turn);save();draw();toast('棋局已退回上一步')};$('new').onclick=startNewGame;function showConfirm(fn){let d=document.createElement('dialog');d.innerHTML='<div class="eyebrow">A NEW BEGINNING</div><h2>重新开启一局？</h2><p>当前棋局将被新的棋局替换。</p><button class="primary">确认新局 ↗</button><button style="width:100%;padding:18px">继续此局</button>';document.body.append(d);let bs=d.querySelectorAll('button');bs[0].onclick=()=>{d.close();d.remove();fn()};bs[1].onclick=()=>{d.close();d.remove();navigate('game')};d.showModal()}
@@ -397,7 +397,7 @@ function showResult(){
  $('resultSeal').textContent=drawGame?'和':redWon?'帥':'將';
  $('resultSeal').style.color=drawGame?'#84775e':redWon?'#933f36':'#414a40';
  const who=drawGame?'双方握手言和':mode==='ai'?(redWon?'你赢得了本局':'山隐赢得了本局'):(redWon?'朱方赢得了本局':'墨方赢得了本局');
- $('resultReason').textContent=who+' · '+$('hint').textContent;
+ $('resultReason').textContent=who+' · '+(globalThis.MQI18n?.source($('hint'))??$('hint').textContent);
  window.MQReview?.decorateResult();
  $('resultDialog').showModal();
 }
@@ -540,6 +540,7 @@ scheduleHomeSkinFold();
 
 // Controls are live only after all core handlers are installed.
 window.MQStartup?.ready();
+
 
 
 
