@@ -415,7 +415,7 @@ function navigate(view){if(location.hash==='#'+view)applyView(view);else locatio
 function applyView(view){
  const analyticsViewStart=performance.now();
  window.MQMasters?.view(view);
- pageView=['game','learn','settings','masters'].includes(view)?view:'home';
+ pageView=['game','learn','settings','masters','feedback'].includes(view)?view:'home';
  if(pageView!=='game'){
   if(immersive)setImmersive(false);
   epoch++;cancelComputer();busy=false;selected=null;
@@ -426,6 +426,7 @@ function applyView(view){
  document.body.dataset.page=pageView;
  $('homePage').hidden=pageView!=='home';$('gamePage').hidden=pageView!=='game';
  $('learnPage').hidden=pageView!=='learn';$('settingsPage').hidden=pageView!=='settings';syncSoundSetting();
+ window.MQFeedback?.view(pageView);
  $('continueGame').hidden=!history.length||ended;
  $('gameMore').open=false;
  draw();window.MQAnalytics?.page(pageView,skin,performance.now()-analyticsViewStart);window.scrollTo(0,0);scheduleHomeSkinFold();
@@ -441,7 +442,7 @@ $('backHome').onclick=()=>{if(window.MQMasters?.leaveGame())return;save();naviga
 $('restartGame').onclick=()=>{if(window.MQMasters?.isPlaying())return;if(mode==='online'){window.MQOnline?.open();return}const start=()=>{reset();window.MQAnalytics?.game(analyticsGame());$('gameMore').open=false};if(history.length&&!ended)showConfirm(start);else start()};
 document.querySelectorAll('[data-game-skin]').forEach(btn=>btn.onclick=()=>{window.MQAnalytics?.track('skin_changed',{from_skin:skin,to_skin:btn.dataset.gameSkin});skin=btn.dataset.gameSkin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换皮肤');});
 $('helpGame').onclick=()=>{$('gameMore').open=false;$('dialog').showModal()};
-window.addEventListener('hashchange',()=>applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':location.hash==='#settings'?'settings':location.hash==='#masters'?'masters':'home'));
+window.addEventListener('hashchange',()=>applyView(location.hash==='#game'?'game':location.hash==='#learn'?'learn':location.hash==='#settings'?'settings':location.hash==='#masters'?'masters':location.hash==='#feedback'?'feedback':'home'));
 // Every fresh visit starts at home; only valid room invitations bypass it.
 function initialView(){
  const invite=new URL(location.href).searchParams.get('room');

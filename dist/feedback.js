@@ -70,7 +70,7 @@
   const receipts = new Set();
   const owner = () => window.MQRecords?.owner() ?? null;
   const randomId = () => Array.from(crypto.getRandomValues(new Uint8Array(24)), byte => byte.toString(16).padStart(2, '0')).join('');
-  let guestToken, retry, busy = false, messageIndex = null, scrollToFeedback = false;
+  let guestToken, retry, busy = false, messageIndex = null;
 
   function guestIdentity(create) {
     if (guestToken) return guestToken;
@@ -120,12 +120,27 @@
     } catch { return false; }
   }
 
+  const entry = document.createElement('button');
+  entry.id = 'openFeedback';
+  entry.type = 'button';
+  entry.className = 'preference-row feedback-entry';
+  entry.setAttribute('data-no-i18n', '');
+  entry.innerHTML = '<strong></strong><span aria-hidden="true">›</span>';
+  page.querySelector('.preferences-card').append(entry);
+
+  const feedbackPage = document.createElement('main');
+  feedbackPage.id = 'feedbackPage';
+  feedbackPage.className = 'settings-page feedback-page';
+  feedbackPage.hidden = true;
+  feedbackPage.setAttribute('data-no-i18n', '');
+  feedbackPage.innerHTML = '<div class="settings-top"><button type="button" class="back-home"></button></div><h1 tabindex="-1"></h1>';
+  page.after(feedbackPage);
+
   const section = document.createElement('section');
   section.id = 'feedbackSection';
   section.className = 'preferences-card mq-feedback';
   section.setAttribute('data-no-i18n', '');
-  section.innerHTML = `<h2 class="profile-section-title" data-copy="0"></h2>
-    <p class="feedback-intro" data-copy="1"></p>
+  section.innerHTML = `<p class="feedback-intro" data-copy="1"></p>
     <p class="feedback-reward" data-copy="2"></p>
     <form novalidate>
       <label for="feedbackType" data-copy="3"></label>
@@ -136,7 +151,9 @@
       <div class="feedback-actions"><button class="feedback-submit" type="submit"></button><button class="feedback-go" type="button" data-copy="15" hidden></button></div>
     </form>
     <p id="feedbackStatus" role="status" hidden></p>`;
-  page.append(section);
+  feedbackPage.append(section);
+  const heading = feedbackPage.querySelector('h1');
+  const back = feedbackPage.querySelector('.back-home');
 
   const form = section.querySelector('form');
   const input = section.querySelector('textarea');
@@ -146,6 +163,9 @@
   const status = section.querySelector('#feedbackStatus');
 
   function render() {
+    entry.querySelector('strong').textContent = heading.textContent = t(0);
+    const language = window.MQI18n?.language;
+    back.textContent = language === 'en' ? '← Settings' : language === 'es' ? '← Ajustes' : '← 返回设置';
     for (const element of section.querySelectorAll('[data-copy]')) element.textContent = t(Number(element.dataset.copy));
     input.placeholder = t(8);
     submit.textContent = t(busy ? 10 : 9);
@@ -199,28 +219,30 @@
 
   async function sync() {
     render();
-    if (document.body.dataset.page !== 'settings') return;
+    if (document.body.dataset.page !== 'feedback') return;
     const id = owner();
     if (id !== null) await hasSubmitted(id);
     render();
   }
 
-  function visitSettings() {
-    if (document.body.dataset.page !== 'settings') return;
-    if (scrollToFeedback) {
-      scrollToFeedback = false;
-      section.scrollIntoView({block: 'start'});
-    }
-    sync();
-  }
-
+  const open = () => navigate('feedback');
+  entry.onclick = open;
+  back.onclick = () => navigate('settings');
   enter.onclick = () => navigate('masters');
-  window.MQFeedback = {hasSubmitted, open() {
-    scrollToFeedback = true;
-    navigate('settings');
-    visitSettings();
-  }};
-  window.addEventListener('hashchange', visitSettings);
+  window.MQFeedback = {
+    hasSubmitted,
+    open,
+    view(view) {
+      const wasOpen = !feedbackPage.hidden;
+      feedbackPage.hidden = view !== 'feedback';
+      if (view === 'feedback') {
+        if (!wasOpen) heading.focus({preventScroll: true});
+        sync();
+      } else if (wasOpen && view === 'settings') {
+        entry.focus({preventScroll: true});
+      }
+    }
+  };
   window.addEventListener('mq-language', render);
   window.addEventListener('mq-auth', () => {
     messageIndex = null;
