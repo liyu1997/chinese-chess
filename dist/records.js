@@ -33,12 +33,23 @@ async function flush(){if(flushing||!user)return;const id=user.id,rows=local.fil
 let resolveIdentity;const identityReady=new Promise(resolve=>resolveIdentity=resolve);
 function setUser(next){const changed=(user?.id||null)!==(next?.id||null);user=next;identityKnown=true;resolveIdentity();if(changed){requestSerial++;hasCloud=false;cloudRows=[];cloudSummary=[];nextCursor=null;onlineStamp='';loading=false;errorText='';render()}if(user){flush();if(panel)refresh()}}
 window.addEventListener('mq-auth',e=>setUser(e.detail.user));
-async function recordResult(d){try{await identityReady;const who=d.owner===null||d.owner===undefined?(user?.id||'guest'):d.owner;if(local.some(r=>r.owner_id===who&&r.match_id===d.gameId))return;local.push({owner_id:who,mode:'ai',match_id:d.gameId,outcome:d.outcome,reason:d.reason,level:d.level,plies:d.plies,started_at:d.startedAt,ended_at:d.endedAt,opponent:'山隐',synced:false});save();render();await flush()}catch{}}
+async function recordResult(d){try{await identityReady;const who=d.owner===null||d.owner===undefined?(user?.id||'guest'):d.owner;if(local.some(r=>r.owner_id===who&&r.match_id===d.gameId))return;local.push({owner_id:who,mode:'ai',match_id:d.gameId,outcome:d.outcome,reason:d.reason,level:d.level,plies:d.plies,started_at:d.startedAt,ended_at:d.endedAt,opponent:'山隐',synced:false});save();render();window.dispatchEvent(new CustomEvent('mq-records-changed'));await flush()}catch{}}
 function open(){if(panel){panel.focus();return}displayLimit=20;panel=createPanel();render();panel.showModal();if(user){refresh();flush()}}
 const resultEntry=document.createElement('button');resultEntry.textContent='查看战绩';resultEntry.style.cssText='width:100%;padding:14px;background:transparent;border:0;color:#8a775b;font:inherit;cursor:pointer';resultEntry.onclick=open;document.getElementById('resultDialog')?.append(resultEntry);const gameEntry=document.createElement('button');gameEntry.textContent='我的战绩';gameEntry.onclick=()=>{const more=document.getElementById('gameMore');if(more)more.open=false;open()};document.querySelector('.more-panel')?.append(gameEntry);
-window.MQRecords={owner,recordResult,open,refresh,onlineFinished(room){if(room.status!=='ended')return;const stamp=room.matchId+':'+room.resultsRecorded;if(stamp===onlineStamp)return;onlineStamp=stamp;if(user)refresh()}};
+
+async function mastersQualification(){
+ await identityReady;const id=user?.id||'guest',isQualified=r=>r.mode==='ai'&&r.outcome==='win'&&Number(r.level)===6&&r.eligible!==false;
+ const proofKey='mq-masters-qualification-v1:'+id;try{const proof=JSON.parse(localStorage.getItem(proofKey));if(proof?.owner===id&&proof.level===6&&proof.matchId)return {owner:id,qualified:true}}catch{}
+ if(local.some(r=>r.owner_id===id&&isQualified(r)))return {owner:id,qualified:true};
+ if(!user)return {owner:id,qualified:false};
+ let cursor=null;const seen=new Set();
+ try{do{const params=new URLSearchParams({mode:'ai'});if(cursor)params.set('cursor',cursor);const d=await api('/chess/records?'+params);if(id!==(user?.id||'guest'))return mastersQualification();const win=d.records.find(isQualified);if(win){try{localStorage.setItem(proofKey,JSON.stringify({owner:id,level:6,matchId:win.match_id}))}catch{}return {owner:id,qualified:true};}cursor=d.nextCursor;if(cursor){if(seen.has(cursor)||seen.size>=200)throw Error('Incomplete records');seen.add(cursor)}}while(cursor);return {owner:id,qualified:false}}
+ catch{return {owner:id,qualified:false,error:'云端战绩暂时无法核验，请联网后重新核验。'}}
+}
+window.MQRecords={mastersQualification,owner,recordResult,open,refresh,onlineFinished(room){if(room.status!=='ended')return;const stamp=room.matchId+':'+room.resultsRecorded;if(stamp===onlineStamp)return;onlineStamp=stamp;if(user)refresh()}};
 if(typeof mode!=='undefined'&&mode==='ai'&&typeof ended!=='undefined'&&ended&&typeof showResult==='function')showResult();
 window.addEventListener('online',()=>{flush();if(panel&&user)refresh()});document.addEventListener('visibilitychange',()=>{if(!document.hidden)flush()});
 api('/me').then(d=>{if(!identityKnown)setUser(d.user)}).catch(()=>{if(!identityKnown){identityKnown=true;resolveIdentity()}});
 })();
+
 

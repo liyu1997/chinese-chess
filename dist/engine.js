@@ -369,6 +369,9 @@ function checkStreak(history,current,side){
  return count;
 }
 function acceptsDraw(b,plies){return plies>=20&&score(b)<=120;}
-const api={initial,names,pseudo,check,play,moves,ai,levels,deepAI,evaluateAdvanced,thinkingBudget,fastCheck,checkStreak,acceptsDraw};if(typeof module!=='undefined')module.exports=api;else root.XQ=api;
+// Masters rounds expand the unchanged Grandmaster's search budget by 2, 4, 8, 16.
+function masterConfig(round=0){round=Math.max(0,Math.min(3,Math.floor(Number(round)||0)));const multiplier=2**(round+1),base=levels[6];return {...base,name:'象力大师赛',depth:base.depth+2*(round+1),time:base.time*multiplier,openingTime:base.openingTime*multiplier,middleTime:base.middleTime*multiplier,softRatio:0.85,qDepth:base.qDepth,tableSize:Math.min(400000,base.tableSize*multiplier),masterRound:round,multiplier};}
+const api={masterConfig,initial,names,pseudo,check,play,moves,ai,levels,deepAI,evaluateAdvanced,thinkingBudget,fastCheck,checkStreak,acceptsDraw};if(typeof module!=='undefined')module.exports=api;else root.XQ=api;
 })(globalThis);
+
 
