@@ -487,3 +487,56 @@ html:is([lang="en"],[lang="es"]) .board-heading small,html:is([lang="en"],[lang=
 html[lang="es"] .language-preference select{min-width:112px}
 html[lang="es"] .game-toolbar .mq-label{font-size:10px}
 html[lang="es"] .board-heading small,html[lang="es"] .board-footer small{font-size:10px}
+
+/* Comic Chess Club, based on the approved version 11 artwork. */
+.comic11-header{display:none}
+.skin-sample.comic11{background:#fff url("./assets/comic-11/ra.webp") center/auto 90% no-repeat}
+body[data-skin="comic11"]{background:#fff}
+body[data-skin="comic11"] :is(.board-wrap,.board-inset){padding:0;border:0;border-radius:0;background:#fff;box-shadow:none}
+body[data-skin="comic11"] #board{aspect-ratio:540/590}
+body[data-skin="comic11"][data-page="game"]:not(.immersive){height:auto;overflow:auto}
+body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-page{
+ display:flex;flex-direction:column;justify-content:flex-start;align-items:center;
+ width:min(100%,470px);height:auto;min-height:100dvh;margin:0 auto;padding:8px 0 24px;
+ color:#353238;font-family:"Microsoft YaHei","PingFang SC",system-ui,sans-serif;
+}
+body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-nav{
+ display:block;position:relative;align-self:auto;inset:auto;width:100%;height:auto;padding:0;
+}
+body[data-skin="comic11"] .comic11-header{position:relative;display:block;aspect-ratio:852/445}
+.comic11-title{position:absolute;width:25%;height:auto;top:6%;left:37.5%}
+.comic11-mascot{position:absolute;width:34%;height:auto;bottom:0;left:5.15%}
+body[data-skin="comic11"] .game-nav .back-home{position:absolute;top:0;left:4%;min-width:0;font-size:11px;padding:7px 0}
+body[data-skin="comic11"] .game-status{
+ position:absolute;left:42%;right:8%;top:52%;min-height:25%;justify-content:center;
+ padding:8px 12px;border:2px solid #c7c8cd;border-radius:16px;background:#fff;
+}
+body[data-skin="comic11"] .game-status::before{
+ content:"";position:absolute;left:-9px;width:14px;height:14px;background:#fff;
+ border-left:2px solid #c7c8cd;border-bottom:2px solid #c7c8cd;transform:rotate(45deg);
+}
+body[data-skin="comic11"] .game-status #status{font-size:clamp(14px,5vw,30px);text-align:center;line-height:1.15}
+body[data-skin="comic11"] .game-status :is(#round,#statusIcon),body[data-skin="comic11"] .game-nav .game-mode{display:none}
+body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-stage{width:100%}
+body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-hint{
+ position:static;max-width:none;margin:7% 0 8%;color:inherit;
+ font-size:clamp(14px,4.8vw,26px);font-weight:800;letter-spacing:1px;
+}
+body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-toolbar{
+ position:relative;inset:auto;display:grid;grid-template-columns:1fr 1fr;gap:4%;
+ width:91%;max-width:none;height:auto;margin:0;padding:0;border:0;background:none;
+}
+body[data-skin="comic11"] :is(#undo,#gameMore>summary){
+ display:flex;align-items:center;justify-content:center;min-height:clamp(45px,13vw,65px);
+ border-radius:18px;font-weight:800;font-size:clamp(17px,5vw,28px);letter-spacing:1px;
+}
+body[data-skin="comic11"] #undo{background:#ff7900;color:#fff;box-shadow:inset 0 -3px #c35412}
+body[data-skin="comic11"] #undo>span{display:none}
+body[data-skin="comic11"] #gameMore>summary{border:2px solid #53545e;color:#353238;font-size:0}
+body[data-skin="comic11"] #gameMore>summary span{font-size:clamp(17px,5vw,28px)}
+body[data-skin="comic11"] #comic11Actions:not(:empty){display:grid;grid-template-columns:1fr 1fr;gap:5px}
+body[data-skin="comic11"] #comic11Actions button[hidden]{display:none}
+body[data-skin="comic11"] .more-panel{right:0;bottom:calc(100% + 7px);max-height:min(55dvh,520px);overflow:auto}
+body[data-skin="comic11"][data-page="game"]:not(.immersive) .long-check-warning{position:static;width:90%;margin:8px auto 0}
+body[data-skin="comic11"].immersive .game-stage{width:min(calc((100dvh - 26px)*540/590),calc(100vw - 18px))}
+body[data-skin="comic11"] #resultDialog{background:#fff;border:2px solid #53545e}
