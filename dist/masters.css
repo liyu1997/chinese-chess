@@ -9,3 +9,5 @@ body[data-page=masters]>header{display:none}body[data-page=masters]{background:#
 @media(prefers-reduced-motion:reduce){.masters-entry,.masters-primary{transition:none}.masters-checking:before{animation:none}}
 
 html:is([lang=en],[lang=es]) .masters-hero h1{letter-spacing:0;font-size:36px}html:is([lang=en],[lang=es]) .masters-tags{letter-spacing:0;gap:11px}html:is([lang=en],[lang=es]) .masters-status h2{letter-spacing:0}html:is([lang=en],[lang=es]) .masters-nav>span:nth-child(2){letter-spacing:0}@media(max-width:760px){html:is([lang=en],[lang=es]) .masters-hero{grid-template-columns:minmax(0,1fr) 90px}html:is([lang=en],[lang=es]) .masters-hero h1{font-size:23px;white-space:normal}html:is([lang=en],[lang=es]) .masters-hero h1 span{font-size:13px;letter-spacing:0}html:is([lang=en],[lang=es]) .masters-nav>span:nth-child(2){font-size:9px}html:is([lang=en],[lang=es]) .masters-tags{gap:5px}html:is([lang=en],[lang=es]) .masters-tags span+span{padding-left:5px}html:is([lang=en],[lang=es]) .masters-tab{font-size:9px!important}}
+/* Keep the portrait's transparent image margins inside narrow viewports. */
+.masters-page{overflow-x:clip}
