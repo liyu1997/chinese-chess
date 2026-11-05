@@ -475,10 +475,15 @@ body[data-page="home"] .academy-arrow svg{width:22px;height:22px;fill:none;strok
 .language-preference{border-bottom:1px solid #e5e0d5}
 .language-preference select{max-width:45%;min-width:108px;padding:10px 28px 10px 12px;border:1px solid #d7d3c6;border-radius:12px;background:#fffaf2;color:inherit;font:inherit;font-size:14px;cursor:pointer}
 .language-preference select:focus-visible{outline:2px solid #a96730;outline-offset:3px}
-html[lang="en"] .segmented>button{white-space:normal;line-height:1.35;padding-left:6px;padding-right:6px}
-html[lang="en"] .game-toolbar .mq-label{font-size:11px;letter-spacing:0;white-space:normal;line-height:1.2}
-html[lang="en"] .mountain-levels button{letter-spacing:0}
-html[lang="en"] .game-nav #status{font-size:clamp(14px,3.8vw,20px)}
-html[lang="en"] .game-mode{max-width:28%;font-size:11px;white-space:normal;text-align:right}
-html[lang="en"] .board-heading small,html[lang="en"] .board-footer small{letter-spacing:0}
-@media(max-width:760px){html[lang="en"] .board-footer #captures{display:none}html[lang="en"] .preference-row{gap:12px}html[lang="en"] .preference-row small{line-height:1.6}html[lang="en"] .home-panel .level-note{line-height:1.55}html[lang="en"] .game-toolbar>button{min-width:0;flex:1}}
+html:is([lang="en"],[lang="es"]) .segmented>button{white-space:normal;line-height:1.35;padding-left:6px;padding-right:6px}
+html:is([lang="en"],[lang="es"]) .game-toolbar .mq-label{font-size:11px;letter-spacing:0;white-space:normal;line-height:1.2}
+html:is([lang="en"],[lang="es"]) .mountain-levels button{letter-spacing:0}
+html:is([lang="en"],[lang="es"]) .game-nav #status{font-size:clamp(14px,3.8vw,20px)}
+html:is([lang="en"],[lang="es"]) .game-mode{max-width:28%;font-size:11px;white-space:normal;text-align:right}
+html:is([lang="en"],[lang="es"]) .board-heading small,html:is([lang="en"],[lang="es"]) .board-footer small{letter-spacing:0}
+@media(max-width:760px){html:is([lang="en"],[lang="es"]) .board-footer #captures{display:none}html:is([lang="en"],[lang="es"]) .preference-row{gap:12px}html:is([lang="en"],[lang="es"]) .preference-row small{line-height:1.6}html:is([lang="en"],[lang="es"]) .home-panel .level-note{line-height:1.55}html:is([lang="en"],[lang="es"]) .game-toolbar>button{min-width:0;flex:1}}
+
+
+html[lang="es"] .language-preference select{min-width:112px}
+html[lang="es"] .game-toolbar .mq-label{font-size:10px}
+html[lang="es"] .board-heading small,html[lang="es"] .board-footer small{font-size:10px}

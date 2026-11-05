@@ -1,7 +1,7 @@
 /* Display-only localization. Game state, notation and account data stay canonical. */
 (()=>{
 'use strict';
-const KEY='miaoqi-language',supported=['zh-CN','en'];
+const KEY='miaoqi-language',supported=['zh-CN','en','es'];
 let language='zh-CN';try{const saved=localStorage.getItem(KEY);if(supported.includes(saved))language=saved}catch{}
 const en={
 '语言':'Language','界面语言':'Language','选择你习惯使用的语言':'Choose your preferred language',
@@ -228,6 +228,44 @@ function english(value){
  }
  return text;
 }
+const es=window.MQSpanish||{};
+const esParts=Object.keys(es).filter(k=>k.length>1).sort((a,b)=>b.length-a.length);
+const esPieceNames={'帅':'General','帥':'General','将':'General','將':'General','车':'Carro','車':'Carro','马':'Caballo','馬':'Caballo','炮':'Cañón','砲':'Cañón','兵':'Soldado','卒':'Soldado','相':'Elefante','象':'Elefante','仕':'Consejero','士':'Consejero'};
+function spanish(value){
+ if(Object.hasOwn(es,value))return es[value];
+ let text=value;
+ text=text.replace(/^(红方|黑方)确认认输？$/,(_,side)=>`¿Rendirse con ${side==='红方'?'rojas':'negras'}?`)
+ .replace(/^第\s*(\d+)\s*回合$/,'Turno $1')
+ .replace(/^已完成 (\d+) \/ (\d+) 课$/,'Completadas $1 / $2 lecciones')
+ .replace(/^第 (\d+) 课 · 约 (\d+) 分钟$/,'Lección $1 · Unos $2 min')
+ .replace(/^山隐正在凝思（最多约([\d.]+)秒）…$/,(_,n)=>`Shanyin está pensando (hasta unos ${n.replace('.',',')} s)…`)
+ .replace(/^高清棋子加载中 · (\d+)\/(\d+)$/,'Cargando piezas detalladas · $1/$2')
+ .replace(/^(\d+)分钟$/,'$1 min')
+ .replace(/^房间 ([A-F0-9]{8})$/,'Sala $1')
+ .replace(/^房间 ([A-F0-9]{8}) · 你执(红|黑)$/,(_,code,side)=>`Sala ${code} · Juegas con ${side==='红'?'rojas':'negras'}`)
+ .replace(/^(红方|黑方)已连续将军 (\d+) 回合，请变换走法，勿反复长将。$/,(_,s,n)=>`Las ${s==='红方'?'rojas':'negras'} han dado jaque ${n} veces seguidas. Cambia de jugada.`)
+ .replace(/^(红方|黑方)已连续 (\d+) 回合将军，不能一直用相同的步骤进行长将，请变换走法。$/,(_,s,n)=>`Las ${s==='红方'?'rojas':'negras'} han dado jaque ${n} veces seguidas. Cambia de jugada.`)
+ .replace(/^(红方|黑方)用时耗尽，超时判负$/,(_,s)=>`Las ${s==='红方'?'rojas':'negras'} agotaron su tiempo y perdieron.`)
+ .replace(/^胜率 (\d+)%$/,'Victorias $1 %')
+ .replace(/联机 · 每方 (\d+) 分钟/g,'En línea · $1 min por jugador')
+ .replace(/^距「(.+)」还需 (\d+) 分$/,(_,title,n)=>`${n} puntos para ${es[title]||title}`)
+ .replace(/^(.+)段$/,(_,rank)=>es[rank]?`Rango ${es[rank]}`:`${rank}段`)
+ .replace(/^(\d+)分起$/,'Desde $1 puntos')
+ .replace(/^正在逐步分析… (\d+) \/ (\d+)$/,'Analizando… $1 / $2')
+ .replace(/^(红|黑)([帅帥将將车車马馬炮砲兵卒相象仕士]) (?=\d+列)/,(_,side,p)=>`${esPieceNames[p]} ${side==='红'?'rojo':'negro'} `)
+ .replace(/^空位 (?=\d+列)/,'Intersección vacía ')
+ .replace(/^落子至 (\d+)列(\d+)行$/,'Mover a columna $1, fila $2')
+ .replace(/(\d+)列(\d+)行/g,'columna $1, fila $2')
+ .replace(/^第(\d+)步 · /,'Jugada $1 · ');
+ if(!/[\u3400-\u9fff]/.test(text))return text;
+ if(text.includes(' · ')||/^Level \d+/.test(text)||text.startsWith('已切换为')||/^(红方|黑方|移至|当前正在被将军；|已选择|这步可以走)/.test(text)||text.startsWith('下一步：')||text.startsWith('轮到你：')){
+  text=text.replace(/^下一步：/,'Siguiente: ').replace(/^轮到你：/,'Tu turno: ');
+  for(const k of esParts)text=text.split(k).join(es[k]);
+  text=text.replace(/^已切换为/,'Seleccionado: ').replace(/(\d+) 回合/g,'$1 turnos').replace(/段$/,' (rango)').replace(/^Level /,'Nivel ');
+ }
+ return text;
+}
+function localized(value){return language==='es'?spanish(value):english(value)}
 const originals=new WeakMap(),attributes=new WeakMap();
 const excluded='script,style,textarea,[data-no-i18n],.piece-fallback,.piece-artwork,.initial-piece,#avatarLetter,.prep-name,.mq-code-preview,.invite-link,#history';
 function skip(el){return !el||!!el.closest(excluded)}
@@ -236,7 +274,7 @@ function localizeText(node){
  const current=node.nodeValue,previous=originals.get(node);
  const source=previous&&current===previous.rendered?previous.source:current;
  const trimmed=source.trim();if(!trimmed)return;
- const rendered=language==='en'?source.replace(trimmed,english(trimmed)):source;
+ const rendered=language==='zh-CN'?source:source.replace(trimmed,localized(trimmed));
  originals.set(node,{source,rendered});if(rendered!==current)node.nodeValue=rendered;
 }
 function localizeAttributes(el){
@@ -245,7 +283,7 @@ function localizeAttributes(el){
  for(const name of ['aria-label','title','placeholder','alt']){
   if(!el.hasAttribute(name))continue;
   const current=el.getAttribute(name),old=saved[name],source=old&&current===old.rendered?old.source:current;
-  let rendered=language==='en'?english(source):source;
+  let rendered=language==='zh-CN'?source:localized(source);
   if(language==='en'){
    rendered=rendered.replace(/^(红|黑)([帅帥将將车車马馬炮砲兵卒相象仕士]) (\d+)列(\d+)行$/,(_,side,p,x,y)=>`${side==='红'?'Red':'Black'} ${pieceNames[p]} · file ${x}, rank ${y}`)
     .replace(/^落子至 (\d+)列(\d+)行$/,'Move to file $1, rank $2');
@@ -276,12 +314,13 @@ function setLanguage(value,persist=true){
  if(!supported.includes(value))return;
  language=value;if(persist)try{localStorage.setItem(KEY,value)}catch{}
  observer.disconnect();document.documentElement.lang=value;document.body.dataset.language=value;
- document.title=value==='en'?english(chineseTitle):chineseTitle;
+ document.title=value==='zh-CN'?chineseTitle:localized(chineseTitle);
  translate(document.body);
  const select=document.getElementById('languageSetting');if(select)select.value=value;
  observe();window.dispatchEvent(new CustomEvent('mq-language',{detail:{language:value}}));
 }
-window.MQI18n={get language(){return language},t:value=>language==='en'?english(String(value)):String(value),setLanguage,translate,source:el=>Array.from(el.childNodes,n=>n.nodeType===3?(originals.get(n)?.source??n.nodeValue):n.textContent).join('')};
+window.MQI18n={get language(){return language},t:value=>language==='zh-CN'?String(value):localized(String(value)),setLanguage,translate,source:el=>Array.from(el.childNodes,n=>n.nodeType===3?(originals.get(n)?.source??n.nodeValue):n.textContent).join('')};
 function init(){document.getElementById('languageSetting')?.addEventListener('change',e=>setLanguage(e.target.value));setLanguage(language,false)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
+
