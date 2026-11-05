@@ -1,7 +1,7 @@
 let gameRecordId=crypto.randomUUID?.()||('game-'+Date.now()+'-'+Math.random().toString(36).slice(2)),gameRecordOwner=null,gameStartedAt=Date.now(),gameTrackEligible=false;
 let gameRecordLevel=2;
 let pageView='home',draftMode='ai';
-const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null,resignedSide=null,pendingResign=null;let last=null;let terrainMap='riverside';try{terrainMap=localStorage.getItem('jing-terrain-map')==='clean'?'clean':'riverside';if(localStorage.getItem('jing-terrain-map')==='vector')localStorage.setItem('jing-terrain-map','riverside')}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['regal','jade','street','mascot'].includes(savedSkin)?'benteng':['serif','benteng','mocheng','sans','playful'].includes(savedSkin)?savedSkin:'playful';if(['regal','jade','street','mascot'].includes(savedSkin))localStorage.setItem('jing-xiangqi-skin','benteng')}catch{};const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);let board=XQ.initial(),turn='r',selected=null,history=[],mode='ai',flipped=false,muted=true,ended=false,busy=false,epoch=0,legal=[];let drawAgreed=false,drawOffer=null,resignedSide=null,pendingResign=null;let last=null;let terrainMap='riverside';try{terrainMap=localStorage.getItem('jing-terrain-map')==='clean'?'clean':'riverside';if(localStorage.getItem('jing-terrain-map')==='vector')localStorage.setItem('jing-terrain-map','riverside')}catch{};let skin='playful';try{const savedSkin=localStorage.getItem('jing-xiangqi-skin');skin=['regal','jade','street','mascot'].includes(savedSkin)?'benteng':['serif','benteng','mocheng','sans','playful','comic11'].includes(savedSkin)?savedSkin:'playful';if(['regal','jade','street','mascot'].includes(savedSkin))localStorage.setItem('jing-xiangqi-skin','benteng')}catch{};const NS='http://www.w3.org/2000/svg';
 function node(tag,attrs={},parent=$('board')){let n=document.createElementNS(NS,tag);for(let k in attrs)n.setAttribute(tag==='image'&&k==='href'&&parent.closest('.piece-artwork')?'data-art-src':k,attrs[k]);parent.append(n);return n;}function text(content,attrs,parent){let n=node('text',attrs,parent);n.textContent=content;return n;}
 
 // A complete, interactive board never depends on any image request.
@@ -39,7 +39,7 @@ function paintPiece(parent,p,pieceSkin=skin){
  node('circle',{r:21.5,fill:'none',stroke:p[0]==='r'?'#c87c62':'#9a9d88','stroke-width':.7},base);
  text(XQ.names[p[0]][p[1]],{x:0,y:10,'text-anchor':'middle','font-family':'Microsoft YaHei,PingFang SC,system-ui,sans-serif','font-size':30,'font-weight':600,fill:p[0]==='r'?'#a84230':'#29352e'},base);
  const art=node('g',{class:'piece-artwork',opacity:0,'pointer-events':'none','aria-hidden':'true','aria-label':parent.getAttribute('aria-label')||p},parent);
- if(pieceSkin==='mocheng')mochengArt(art,p);else if(illustratedSkins[pieceSkin])mascotArt(art,p,51,true,pieceSkin);else if(pieceSkin==='playful')playfulArt(art,p);else if(pieceSkin==='serif')artwork(art,p);else sansArtwork(art,p);
+ if(pieceSkin==='comic11')comic11Art(art,p);else if(pieceSkin==='mocheng')mochengArt(art,p);else if(illustratedSkins[pieceSkin])mascotArt(art,p,51,true,pieceSkin);else if(pieceSkin==='playful')playfulArt(art,p);else if(pieceSkin==='serif')artwork(art,p);else sansArtwork(art,p);
  const images=[...art.querySelectorAll('image[data-art-src]')];
  if(!images.length)return;
  const batch=activePieceBatch,record={art,base,images,ready:false};
@@ -173,13 +173,35 @@ function mascotArt(parent,p,size=51,badge=true,artSkin=skin){
  node('circle',{r:r+2,fill:'transparent','pointer-events':'all'},parent);
 }
 mascotArt.id=0;
+// Cut from the approved mockup and positioned relative to each grid intersection.
+const comic11Frames={
+ br:[-25.2,-37.1,57.3,68.6], be:[-27.7,-26.4,54.7,57.9], bk:[-23.9,-37.1,47.2,68.6],
+ ba:[-22.7,-23.3,35.9,54.7], bc:[-22.7,-31.5,49.1,57.9], bh:[-15.1,-32.7,44.7,59.1], bp:[-20.8,-30.8,45.9,65.4],
+ rr:[-25.2,-28.9,56.6,68.6], re:[-27.7,-25.2,45.3,64.8], rk:[-26.4,-30.8,53.5,72.4],
+ ra:[-22,-18.2,37.8,58.5], rc:[-22.7,-32.7,49.7,58.5], rh:[-23.9,-34,49.1,59.8], rp:[-25.2,-39,49.7,69.2]
+};
+function comic11Art(parent,p){
+ const [x,y,width,height]=comic11Frames[p];
+ node('image',{href:'./assets/comic-11/'+p+'.webp',x,y,width,height},parent);
+}
+function layoutComic11(enabled){
+ const extra=$('comic11Actions');
+ if(enabled===extra.hasChildNodes())return;
+ if(enabled)document.querySelectorAll('.comic11-header img[data-src]').forEach(img=>{img.src=img.dataset.src;delete img.dataset.src});
+ for(const id of ['flip','immersive','offerDraw','resign']){
+  if(enabled)extra.append($(id));
+  else $('gameMore').before($(id));
+ }
+}
 function applySkin(){
+ const comic=skin==='comic11';
  document.body.dataset.skin=skin;
+ layoutComic11(comic);
  document.body.dataset.illustrated=String(!!illustratedSkins[skin]);
  document.body.dataset.terrain=skin==='playful'?terrainMap:'clean';
  document.querySelectorAll('[data-map]').forEach(b=>{const on=b.dataset.map===terrainMap;b.setAttribute('aria-pressed',String(on));b.classList.toggle('active',on)});
- $('board').setAttribute('viewBox',skin==='playful'?(terrainMap!=='clean'?'20 -8 520 640':'20 16 520 592'):'-12 -12 584 648');
- const name=illustratedSkins[skin]?illustratedSkins[skin].name+' · 妙棋手系列':skin==='playful'?'玲珑将相':'凝脂白玉 · 山水相望';
+ $('board').setAttribute('viewBox',comic?'10 19 540 590':skin==='playful'?(terrainMap!=='clean'?'20 -8 520 640':'20 16 520 592'):'-12 -12 584 648');
+ const name=comic?'漫画棋社':illustratedSkins[skin]?illustratedSkins[skin].name+' · 妙棋手系列':skin==='playful'?'玲珑将相':'凝脂白玉 · 山水相望';
  document.querySelectorAll('.light-label,.preview-caption').forEach(el=>el.textContent=name);
  $('captures').textContent=illustratedSkins[skin]?'棋逢趣手，落子有趣。':skin==='playful'?'小小棋子，大大天地。':'落子无悔，亦可重来。';
 
@@ -221,7 +243,8 @@ function draw(){
 }
 function renderBoard(){applySkin();let visualBoard=pageView==='home'?XQ.initial():board;let svg=$('board');svg.innerHTML=`<defs><linearGradient id="red-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#77271e"/><stop offset=".35" stop-color="#a13f2d"/><stop offset="1" stop-color="#ba5640"/></linearGradient><linearGradient id="black-carving" x1="0" y1="1" x2=".3" y2="0"><stop stop-color="#141c18"/><stop offset=".4" stop-color="#29332c"/><stop offset="1" stop-color="#444b40"/></linearGradient></defs>`;
 if(skin==='playful'&&terrainMap!=='clean')drawPlayfulTerrain(svg,terrainMap);
-let grid=node('g',{'stroke':skin==='playful'?'#a39786':'#9f927a','stroke-width':skin==='playful'?'.6':'.85',fill:'none'});for(let y=0;y<10;y++)node('path',{d:`M56 ${60+y*56}H504`},grid);for(let x=0;x<9;x++){let xx=56+x*56;node('path',{d:x===0||x===8?`M${xx} 60V564`:`M${xx} 60V284 M${xx} 340V564`},grid);}if(skin!=='playful')node('rect',{x:51,y:55,width:458,height:514,'stroke-width':1.5},grid);for(let y of [60,452])node('path',{d:`M224 ${y}l112 112 M336 ${y}l-112 112`},grid);if(skin!=='playful')for(let y of [2,3,6,7])for(let x of y===2||y===7?[1,7]:[0,2,4,6,8]){let X=56+x*56,Y=60+y*56;for(let side of [-1,1])if(x+side>=0&&x+side<9)for(let v of [-1,1])node('path',{d:`M${X+side*6} ${Y+v*12}v${-v*6}h${side*6}`},grid);}
+const comic=skin==='comic11', plainGrid=comic||skin==='playful';
+let grid=node('g',{'stroke':comic?'#a9abb1':skin==='playful'?'#a39786':'#9f927a','stroke-width':comic?'.9':skin==='playful'?'.6':'.85',fill:'none'});for(let y=0;y<10;y++)node('path',{d:`M56 ${60+y*56}H504`},grid);for(let x=0;x<9;x++){let xx=56+x*56;node('path',{d:x===0||x===8?`M${xx} 60V564`:`M${xx} 60V284 M${xx} 340V564`},grid);}if(!plainGrid)node('rect',{x:51,y:55,width:458,height:514,'stroke-width':1.5},grid);for(let y of [60,452])node('path',{d:`M224 ${y}l112 112 M336 ${y}l-112 112`},grid);if(!plainGrid)for(let y of [2,3,6,7])for(let x of y===2||y===7?[1,7]:[0,2,4,6,8]){let X=56+x*56,Y=60+y*56;for(let side of [-1,1])if(x+side>=0&&x+side<9)for(let v of [-1,1])node('path',{d:`M${X+side*6} ${Y+v*12}v${-v*6}h${side*6}`},grid);}
 // High-detail ceramic river reliefs from the approved board reference.
 if(skin==='playful'&&terrainMap==='clean'){
  const motifs=node('g',{'aria-hidden':'true','pointer-events':'none',class:'river-relief'});
@@ -230,7 +253,7 @@ if(skin==='playful'&&terrainMap==='clean'){
 }else if(illustratedSkins[skin]){
  text(illustratedSkins[skin].river,{x:280,y:310,'text-anchor':'middle','font-family':'Microsoft YaHei,Arial,sans-serif','font-size':16,'font-weight':800,'letter-spacing':5,fill:'#31312a'});
  text(illustratedSkins[skin].line,{x:280,y:329,'text-anchor':'middle','font-family':'Microsoft YaHei,sans-serif','font-size':8,fill:'#9b6840'});
-}else if(skin!=='playful'){
+}else if(!plainGrid){
  const motifs=node('g',{'aria-hidden':'true',fill:'none','stroke-linecap':'round','stroke-linejoin':'round'});
  const mountain='M143 318 C152 317 157 306 163 308 C168 309 171 316 179 319 M161 312 C170 309 174 296 180 299 C186 301 190 315 195 312 C200 307 204 319 214 320';
  const water='M354 306 C366 299 377 314 390 307 C397 303 401 304 407 302 M354 313 C366 306 377 321 390 314 C397 310 401 311 407 309 M354 320 C366 313 377 328 390 321 C397 317 401 318 407 316';
@@ -243,8 +266,8 @@ if(selected)for(let m of legal.filter(m=>m.x===selected.x&&m.y===selected.y)){le
 document.querySelectorAll('[data-skin],[data-game-skin]').forEach(btn=>{let active=(btn.dataset.skin||btn.dataset.gameSkin)===skin;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active));});$('round').textContent=`第 ${String(Math.floor(history.length/2)+1).padStart(2,'0')} 回合`;$('moveCount').textContent=String(history.length).padStart(2,'0');$('history').innerHTML='';history.forEach((h,i)=>{let li=document.createElement('li');li.textContent=h.label;$('history').append(li)});$('undo').disabled=!history.length||busy;$('offerDraw').disabled=ended||busy||mode==='ai'&&turn!=='r';$('resign').disabled=ended;
 const repeatedSide=['r','b'].find(side=>XQ.checkStreak(history,board,side)>=5);
 $('longCheckWarning').hidden=pageView!=='game'||ended||!repeatedSide;
-$('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';syncLevelPicker();$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));paintPiece(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));paintPiece(icon,turn+'k');}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));paintPiece(icon,turn+'k');}if(!ended){$('status').textContent=busy?(Number($('level').value)>=5?`山隐正在凝思（最多约${XQ.thinkingBudget(board,XQ.levels[Number($('level').value)],{plies:history.length}).time/1000}秒）…`:'山隐正在凝思…'):(turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':'轻触棋子，查看可行之处';}window.MQOnline?.render();}
-document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{window.MQAnalytics?.track('skin_changed',{from_skin:skin,to_skin:btn.dataset.skin});skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'温玉雅宋',sans:'疏朗 · 黑体',playful:'玲珑将相',benteng:'妙棋手',mocheng:'墨橙圆章'}[skin]));});
+$('longCheckWarning').textContent=repeatedSide?`${repeatedSide==='r'?'红方':'黑方'}已连续将军 ${XQ.checkStreak(history,board,repeatedSide)} 回合，请变换走法，勿反复长将。`:'';$('opponent').textContent=mode==='ai'?`山隐 · ${XQ.levels[Number($('level').value)]?.name.split(' · ')[1]||'棋友'}`:'同屏 · 棋友';document.querySelectorAll('[data-mode]').forEach(b=>b.classList.toggle('active',b.dataset.mode===draftMode));$('level').disabled=draftMode!=='ai';syncLevelPicker();$('statusIcon').style.fontFamily=skin==='serif'?'PieceSerif,serif':'PieceSans,sans-serif';$('statusIcon').textContent=turn==='r'?'帥':'將';$('statusIcon').style.color=turn==='r'?'#933f36':'#414a40';if(skin==='sans'){$('statusIcon').textContent='';const icon=node('svg',{viewBox:'-29 -30 58 61',style:'width:43px;height:43px'},$('statusIcon'));paintPiece(icon,turn+'k');}if(illustratedSkins[skin]){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-28 -28 56 56',width:38,height:38},$('statusIcon'));paintPiece(icon,turn+'k');}if(skin==='playful'){$('statusIcon').textContent='';let icon=node('svg',{viewBox:'-26 -26 52 52',width:34,height:34},$('statusIcon'));paintPiece(icon,turn+'k');}if(!ended){$('status').textContent=busy?(Number($('level').value)>=5?`山隐正在凝思（最多约${XQ.thinkingBudget(board,XQ.levels[Number($('level').value)],{plies:history.length}).time/1000}秒）…`:'山隐正在凝思…'):(comic&&turn==='r'?'轮到你了！':turn==='r'?'请朱方落子':'请墨方落子');$('hint').textContent=XQ.check(board,turn)?'将军！请先解将':selected?'选择亮起的位置落子':comic?(turn==='r'?'红方走棋':'黑方走棋'):'轻触棋子，查看可行之处';}window.MQOnline?.render();}
+document.querySelectorAll('[data-skin]').forEach(btn=>btn.onclick=()=>{window.MQAnalytics?.track('skin_changed',{from_skin:skin,to_skin:btn.dataset.skin});skin=btn.dataset.skin;try{localStorage.setItem('jing-xiangqi-skin',skin)}catch{}draw();toast('已切换为'+({serif:'温玉雅宋',sans:'疏朗 · 黑体',playful:'玲珑将相',benteng:'妙棋手',mocheng:'墨橙圆章',comic11:'漫画棋社'}[skin]));});
 $('board').onclick=e=>{let p=$('board').createSVGPoint();p.x=e.clientX;p.y=e.clientY;p=p.matrixTransform($('board').getScreenCTM().inverse());let x=Math.round((p.x-56)/56),y=Math.round((p.y-60)/56);if(flipped){x=8-x;y=9-y}if(x>=0&&x<9&&y>=0&&y<10)click(x,y)};
 function click(x,y){if(mode==='online'&&!window.MQOnline?.canMove())return;if(pageView!=='game'||ended||busy||mode==='ai'&&turn==='b')return;if(board[y][x]?.[0]===turn){selected=selected?.x===x&&selected?.y===y?null:{x,y};draw();return}if(selected){let m=legal.find(m=>m.x===selected.x&&m.y===selected.y&&m.X===x&&m.Y===y);if(m){if(mode==='online'){window.MQOnline.move(m);return}move(m);computer()}else toast('此处不可落子')}}
 function audio(){if(muted)return;try{let ctx=window.audioCtx||(window.audioCtx=new (window.AudioContext||window.webkitAudioContext)());ctx.resume();let o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.setValueAtTime(680,ctx.currentTime);o.frequency.exponentialRampToValueAtTime(210,ctx.currentTime+.1);g.gain.setValueAtTime(.12,ctx.currentTime);g.gain.exponentialRampToValueAtTime(.001,ctx.currentTime+.14);o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.15)}catch{}}
