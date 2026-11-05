@@ -1,0 +1,14 @@
+.mq-feedback{margin-top:24px;scroll-margin-top:24px;min-width:0}
+.feedback-intro,.mq-feedback #feedbackNote{color:#897b66;font-size:12px;line-height:1.7}
+.feedback-reward{display:inline-block;margin:6px 0 20px;padding:7px 11px;border-radius:8px;background:#f6e8d3;color:#906035;font-size:12px;line-height:1.6}
+.mq-feedback label{display:block;margin:0 0 8px;font-size:13px}
+.mq-feedback select,.mq-feedback textarea{box-sizing:border-box;max-width:100%;padding:10px 13px;border:1px solid #ddd3c2;border-radius:10px;background:#fffcf5;color:#403d34;font:inherit}
+.mq-feedback select{display:block;margin-bottom:18px}
+.mq-feedback textarea{display:block;width:100%;min-height:130px;resize:vertical;line-height:1.7}
+.feedback-actions,.masters-gate-actions{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.mq-feedback .feedback-submit{padding:11px 18px;border:1px solid #36392f;border-radius:10px;background:#ff963c;color:#33382d;font-weight:600}
+.feedback-go{color:#8c5c2c}
+.mq-feedback button:disabled{opacity:.6;cursor:wait}
+#feedbackStatus{padding:10px 12px;border-radius:8px;background:#eef0e4;color:#4e6340;font-size:13px;line-height:1.6}
+#feedbackStatus.feedback-error{background:#f9eae2;color:#924a36}
+@media(max-width:600px){.mq-feedback textarea,.mq-feedback select{font-size:16px}}

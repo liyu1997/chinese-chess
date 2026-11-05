@@ -41,12 +41,15 @@ async function mastersQualification(){
  await identityReady;const id=user?.id||'guest',isQualified=r=>r.mode==='ai'&&r.outcome==='win'&&Number(r.level)===6&&r.eligible!==false;
  const proofKey='mq-masters-qualification-v1:'+id;try{const proof=JSON.parse(localStorage.getItem(proofKey));if(proof?.owner===id&&proof.level===6&&proof.matchId)return {owner:id,qualified:true}}catch{}
  if(local.some(r=>r.owner_id===id&&isQualified(r)))return {owner:id,qualified:true};
+ const feedbackQualified=await window.MQFeedback?.hasSubmitted(id);
+ if(id!==(user?.id||'guest'))return mastersQualification();
+ if(feedbackQualified)return {owner:id,qualified:true};
  if(!user)return {owner:id,qualified:false};
  let cursor=null;const seen=new Set();
  try{do{const params=new URLSearchParams({mode:'ai'});if(cursor)params.set('cursor',cursor);const d=await api('/chess/records?'+params);if(id!==(user?.id||'guest'))return mastersQualification();const win=d.records.find(isQualified);if(win){try{localStorage.setItem(proofKey,JSON.stringify({owner:id,level:6,matchId:win.match_id}))}catch{}return {owner:id,qualified:true};}cursor=d.nextCursor;if(cursor){if(seen.has(cursor)||seen.size>=200)throw Error('Incomplete records');seen.add(cursor)}}while(cursor);return {owner:id,qualified:false}}
  catch{return {owner:id,qualified:false,error:'云端战绩暂时无法核验，请联网后重新核验。'}}
 }
-window.MQRecords={mastersQualification,owner,recordResult,open,refresh,onlineFinished(room){if(room.status!=='ended')return;const stamp=room.matchId+':'+room.resultsRecorded;if(stamp===onlineStamp)return;onlineStamp=stamp;if(user)refresh()}};
+window.MQRecords={ready:identityReady,mastersQualification,owner,recordResult,open,refresh,onlineFinished(room){if(room.status!=='ended')return;const stamp=room.matchId+':'+room.resultsRecorded;if(stamp===onlineStamp)return;onlineStamp=stamp;if(user)refresh()}};
 if(typeof mode!=='undefined'&&mode==='ai'&&typeof ended!=='undefined'&&ended&&typeof showResult==='function')showResult();
 window.addEventListener('online',()=>{flush();if(panel&&user)refresh()});document.addEventListener('visibilitychange',()=>{if(!document.hidden)flush()});
 api('/me').then(d=>{if(!identityKnown)setUser(d.user)}).catch(()=>{if(!identityKnown){identityKnown=true;resolveIdentity()}});
