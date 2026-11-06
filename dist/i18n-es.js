@@ -20,7 +20,7 @@ window.MQSpanish={
  "你执红 · 先手": "Juegas con rojas · Primer turno",
  "凝脂白玉 · 山水相望": "Jade · Montañas y agua",
  "温玉雅宋": "Jade cálido",
- "漫画棋社": "Club de ajedrez ilustrado",
+ "简洁博弈": "Ajedrez chino minimalista",
  "轮到你了！": "¡Tu turno!",
  "红方走棋": "Juegan las rojas",
  "黑方走棋": "Juegan las negras",
