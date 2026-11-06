@@ -8,7 +8,7 @@ const en={
 '妙棋手 · 来一局轻松的中国象棋':'Miaoqishou · Enjoy a game of Xiangqi','中国象棋':'Chinese Chess','妙棋手':'Miaoqishou',
 '基础棋盘已就绪，正在加载对弈功能…':'Board ready. Loading game…','重新加载':'Reload','对弈功能加载较慢，基础棋盘已保留。请检查网络或重新加载。':'The game is taking longer to load. Check your connection or reload.','正在加载对弈功能，请稍候…':'Loading the game. Please wait…',
 '墨方':'Black','朱方':'Red','红方':'Red','黑方':'Black','山隐':'Shanyin','山隐 · 棋友':'Shanyin · Opponent','同屏 · 棋友':'Local opponent','你执红 · 先手':'You play Red · First move',
-'凝脂白玉 · 山水相望':'Jade · Mountains & Water','温玉雅宋':'Warm Jade','墨橙圆章':'Ink & Orange','漫画棋社':'Comic Chess Club','轮到你了！':'Your turn!','红方走棋':'Red to move','黑方走棋':'Black to move','疏朗':'Clear Script','疏朗 · 黑体':'Clear Script','玲珑将相':'Little Generals','妙棋手系列':'Miaoqishou Collection','文字 · 墨橙':'Lettering · Ink & Orange','汉风 · 漫画':'Han-style · Comic',
+'凝脂白玉 · 山水相望':'Jade · Mountains & Water','温玉雅宋':'Warm Jade','墨橙圆章':'Ink & Orange','简洁博弈':'Minimalist Xiangqi','轮到你了！':'Your turn!','红方走棋':'Red to move','黑方走棋':'Black to move','疏朗':'Clear Script','疏朗 · 黑体':'Clear Script','玲珑将相':'Little Generals','妙棋手系列':'Miaoqishou Collection','文字 · 墨橙':'Lettering · Ink & Orange','汉风 · 漫画':'Han-style · Comic',
 '落子无悔，亦可重来。':'Every move is a new possibility.','棋逢趣手，落子有趣。':'Good company. Great moves.','小小棋子，大大天地。':'Small pieces. A world of possibilities.',
 '开启新局':'New game','继续上次棋局':'Resume game','对弈方式':'Game mode','人机对弈':'Play computer','双人同屏':'Local two-player','联机对战':'Play online','即将开放':'Coming soon','棋力':'Difficulty','入门':'Beginner','进阶':'Intermediate','挑战':'Challenger','高手':'Expert','宗师':'Grandmaster',
 '闲庭 · 入门':'Beginner','凝思 · 进阶':'Intermediate','试锋 · 挑战':'Challenger','纵横 · 高手':'Expert','入微 · 宗师':'Grandmaster','选择棋盘':'Choose a board','象棋学堂':'Learn Xiangqi',
