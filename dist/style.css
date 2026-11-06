@@ -540,3 +540,92 @@ body[data-skin="comic11"] .more-panel{right:0;bottom:calc(100% + 7px);max-height
 body[data-skin="comic11"][data-page="game"]:not(.immersive) .long-check-warning{position:static;width:90%;margin:8px auto 0}
 body[data-skin="comic11"].immersive .game-stage{width:min(calc((100dvh - 26px)*540/590),calc(100vw - 18px))}
 body[data-skin="comic11"] #resultDialog{background:#fff;border:2px solid #53545e}
+
+/* Give the desktop board its own column and place the host beside its upper edge. */
+@media (min-width:900px) {
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-page {
+  --comic-board-width:min(780px,calc((100dvh - 96px)*540/590),calc(100vw - 390px));
+  display:grid;
+  grid-template-columns:minmax(160px,220px) var(--comic-board-width) minmax(135px,175px);
+  grid-template-rows:auto auto auto;
+  justify-content:center;
+  align-content:start;
+  align-items:start;
+  column-gap:clamp(12px,1.5vw,24px);
+  width:100%;
+  padding:20px 16px 16px;
+ }
+ body[data-skin="comic11"][data-page="game"][data-online="true"]:not(.immersive) .game-page {
+  --comic-board-width:min(780px,calc((100dvh - 168px)*540/590),calc(100vw - 390px));
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-nav {
+  grid-area:2 / 1;
+  align-self:start;
+  padding-top:34px;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .comic11-header {
+  aspect-ratio:auto;
+  display:grid;
+  justify-items:end;
+  gap:14px;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) :is(.comic11-title,.comic11-mascot) {
+  position:static;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .comic11-title {
+  width:96px;
+  justify-self:center;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .comic11-mascot {
+  width:min(100%,190px);
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-status {
+  position:relative;
+  inset:auto;
+  min-height:0;
+  margin-top:12px;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-status::before {
+  left:67%;
+  top:-9px;
+  transform:rotate(135deg);
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-status #status {
+  font-size:clamp(14px,1.5vw,21px);
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-stage {
+  grid-area:2 / 2;
+  width:100%;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-toolbar {
+  grid-area:2 / 3;
+  grid-template-columns:1fr;
+  gap:10px;
+  width:100%;
+  margin-top:60px;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) :is(#undo,#gameMore>summary,#gameMore>summary span) {
+  font-size:16px;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) #gameMore>summary {
+  font-size:0;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .more-panel {
+  top:calc(100% + 8px);
+  bottom:auto;
+  max-height:min(55dvh,calc(100dvh - 225px));
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) #mqRoomBar {
+  grid-area:1 / 2;
+  width:100%;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .game-hint {
+  grid-area:3 / 2;
+  margin:8px 0 0;
+  font-size:16px;
+ }
+ body[data-skin="comic11"][data-page="game"]:not(.immersive) .long-check-warning {
+  grid-area:3 / 3;
+  width:100%;
+ }
+}
