@@ -10,5 +10,10 @@
   },
   "previews": {},
   "main": "src/runtime.mjs",
-  "keep_vars": true
+  "keep_vars": true,
+  "vars": {
+    "POSTHOG_ENABLED": "true",
+    "POSTHOG_PROJECT_TOKEN": "phc_sVz3ZFnfJnKEe5fJrxfnJkwrAVbQWoQj5c3Z5fTv2DPn",
+    "POSTHOG_HOST": "https://us.i.posthog.com"
+  }
 }
