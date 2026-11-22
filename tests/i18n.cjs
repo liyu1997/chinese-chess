@@ -6,6 +6,7 @@ function setup(saved,blocked=false,existingStorage=null){
  const document={title:'妙棋手 · 来一局轻松的中国象棋',readyState:'loading',body,documentElement:{},addEventListener(){},getElementById(){return null},createTreeWalker(){let i=0;return {nextNode:()=>nodes[i++]||null}}};
  const context={document,window:{addEventListener(type,listener){events.set(type,listener)},dispatchEvent(event){events.get(event.type)?.(event)}},localStorage:{getItem(k){if(blocked)throw Error('blocked');return storage.get(k)},setItem(k,v){if(blocked)throw Error('blocked');storage.set(k,v)}},MutationObserver:class{observe(){}disconnect(){}},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options?.detail}},NodeFilter:{SHOW_TEXT:4}};
  vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/i18n-es.js','utf8'),context);
+ for(const locale of ['fr','de','it','ar'])vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/i18n-'+locale+'.js','utf8'),context);
  vm.runInNewContext(code,context);return {i18n:context.window.MQI18n,document,storage,nodes,spanish:context.window.MQSpanish,emit:event=>context.window.dispatchEvent(event)};
 }
 const a=setup();assert.equal(a.i18n.language,'zh-CN');
@@ -22,8 +23,8 @@ assert.equal(a.i18n.t('下一步：把红车沿竖线向前移动四格，体会
 assert.equal(a.i18n.t('张三'),'张三');
 const glyph={nodeType:3,nodeValue:'帥',parentElement:{closest:s=>s==='svg'?{}:null}};a.i18n.translate(glyph);assert.equal(glyph.nodeValue,'帥');
 const username={nodeType:3,nodeValue:'高手',parentElement:{closest:s=>s.includes('[data-no-i18n]')?{}:null}};a.i18n.translate(username);assert.equal(username.nodeValue,'高手');
-a.i18n.setLanguage('fr');assert.equal(a.i18n.language,'en');
-assert.equal(setup('en').i18n.language,'en');assert.equal(setup('fr').i18n.language,'zh-CN');
+a.i18n.setLanguage('ja');assert.equal(a.i18n.language,'en');
+assert.equal(setup('en').i18n.language,'en');assert.equal(setup('ja').i18n.language,'zh-CN');
 const b=setup(null,true);b.i18n.setLanguage('en');assert.equal(b.i18n.t('悔棋'),'Undo');
 const lesson=require('../dist/lessons.js');for(const l of lesson.lessons){for(const value of [l.title,l.summary,...l.points,l.mistake,l.takeaway,...l.steps.map(s=>s.text)])assert.ok(!/[\u3400-\u9fff]/.test(a.i18n.t(value)),l.id+': '+value)}
 console.log('Language persistence, switching, dynamic text, canonical saves, protected names/glyphs, storage fallback and all 16 lesson translations passed.');
@@ -80,3 +81,31 @@ assert.equal(reopened.i18n.language,'zh-CN'); // other tabs sync this device
 console.log('Homepage entry, device-ID migration, separate devices, reopen, login/logout, invalid preferences and tab synchronization passed.');
 
 
+
+
+for(const locale of ['fr','de','it','ar']){
+ a.i18n.setLanguage(locale);
+ assert.equal(a.document.documentElement.lang,locale);
+ assert.equal(a.document.documentElement.dir,locale==='ar'?'rtl':'ltr');
+ const context={window:{}};vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/i18n-'+locale+'.js','utf8'),context);
+ const messages=context.window.MQLocales[locale],formats=context.window.MQLocaleFormats[locale];
+ assert.equal(Object.keys(messages).length,696);
+ for(const [source,expected]of Object.entries(messages)){assert.ok(expected.trim(),locale+': '+source);assert.equal(a.i18n.t(source),expected);assert.ok(!/[\u3400-\u9fff]/.test(expected),source)}
+ for(const l of lesson.lessons)for(const value of [l.title,l.summary,...l.points,l.mistake,l.takeaway,...l.steps.map(s=>s.text)])assert.equal(a.i18n.t(value),messages[value],locale+': '+l.id);
+ assert.equal(a.storage.get('miaoqi-language'),locale);
+ assert.equal(setup(locale).i18n.language,locale);
+ assert.equal(a.i18n.t('第 02 回合'),formats.turn.replace('{0}','02'));
+ assert.equal(a.i18n.t('已完成 3 / 16 课'),formats.completed.replace('{0}','3').replace('{1}','16'));
+ assert.equal(a.i18n.t('第 1 课 · 约 2 分钟'),formats.lesson.replace('{0}','1').replace('{1}','2'));
+ assert.ok(a.i18n.t('房间 AB12CD34 · 你执红').includes('AB12CD34'));
+ assert.ok(!/[\u3400-\u9fff]/.test(a.i18n.t('房间 AB12CD34 · 你执红')));
+ assert.ok(!/[\u3400-\u9fff]/.test(a.i18n.t('红兵 1列7行')));
+ assert.ok(!/[\u3400-\u9fff]/.test(a.i18n.t('落子至 1列6行')));
+ assert.ok(!/[\u3400-\u9fff]/.test(a.i18n.t('恭喜晋级半决赛！下一位对手已就位。')));
+ assert.ok(!/[\u3400-\u9fff]/.test(a.i18n.t('下一步：把红车沿竖线向前移动四格，体会长距离的直线行动。')));
+ assert.equal(a.i18n.t('张三'),'张三');a.i18n.translate(username);assert.equal(username.nodeValue,'高手');
+ a.i18n.translate(glyph);assert.equal(glyph.nodeValue,'帥');
+}
+a.i18n.setLanguage('zh-CN');assert.equal(a.document.documentElement.dir,'ltr');assert.equal(text.nodeValue,'将军！请先解将');
+for(const locale of ['fr','de','it','ar'])assert.ok(html.includes('value="'+locale+'"'));
+console.log('French, German, Italian and Arabic: 696 messages each, courses, tournament, feedback, counters, storage and RTL direction passed.');

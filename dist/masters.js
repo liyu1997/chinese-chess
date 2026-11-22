@@ -11,7 +11,7 @@ const words={
 '稳守反击':['Solid counterattack','Contraataque sólido'],'中路争先':['Central initiative','Iniciativa central'],'双马争锋':['Twin horses','Caballos al ataque'],'步步为营':['Patient pressure','Presión paciente'],'车炮联攻':['Chariot & cannon attack','Ataque de carro y cañón'],'宗师':['Grandmaster','Gran maestro'],'搜索预算':['search budget','presupuesto de búsqueda'],'返回大师赛':['Masters bracket','Cuadro del torneo'],'返回赛程 · 和棋重赛':['Back to bracket · Replay draw','Volver al cuadro · Repetir tablas'],'查看冠军荣誉':['View your title','Ver tu título'],'查看晋级对阵':['View next round','Ver próxima ronda'],'查看最终赛果':['View final results','Ver resultados finales'],'双方同意和棋，本轮重赛。':['Draw agreed. This round will be replayed.','Tablas acordadas. Se repite esta ronda.'],'四轮全胜！你是本届象力大师赛冠军。':['Four wins! You are the Xiangli Masters champion.','¡Cuatro victorias! Eres el campeón del Másters Xiangli.'],'确认':['Confirm','Confirmar'],'取消':['Cancel','Cancelar'],'重新抽签开启赛事？':['Start a new tournament draw?','¿Empezar un nuevo sorteo?'],'当前大师赛进度将被替换。普通对局不受影响。':['This replaces the current tournament. Your ordinary game is preserved.','Se sustituirá el torneo actual. Se conserva tu partida normal.'],'挑战宗师？':['Challenge the Grandmaster?','¿Retar al gran maestro?'],'当前普通棋局将被新的宗师对局替换。':['This replaces your current ordinary game with a new Grandmaster game.','Se sustituirá tu partida normal por una nueva contra el gran maestro.']
 };
 const originals=new WeakMap();
-function T(value){const language=window.MQI18n?.language;if(!language||language==='zh-CN')return value;const i=language==='es'?1:0,s=String(value);if(words[s])return words[s][i];let out=s
+function T(value){const language=window.MQI18n?.language;if(!language||language==='zh-CN')return value;if(['fr','de','it','ar'].includes(language))return window.MQI18n.t(String(value));const i=language==='es'?1:0,s=String(value);if(words[s])return words[s][i];let out=s
  .replace(/^已晋级 (\d+) \/ 4 轮$/,(_,n)=>i?`Avanzaste ${n} / 4 rondas`:`Advanced ${n} / 4 rounds`)
  .replace(/^开局最多约 (\d+) 秒 · 复杂局面最多约 (\d+) 秒$/,(_,a,b)=>i?`Apertura: hasta ${a} s · Posiciones complejas: hasta ${b} s`:`Opening: up to ${a}s · Complex positions: up to ${b}s`)
  .replace(/^(\d+) 人 · /,(_,n)=>i?`${n} jugadores · `:`${n} players · `)
@@ -63,3 +63,4 @@ window.MQMasters={saveGame,onResult,view,decorateGame,isPlaying:()=>activeGame,s
 window.addEventListener('mq-language',()=>{render();if(activeGame)decorateGame()});window.addEventListener('mq-feedback-submitted',refresh);window.addEventListener('mq-records-changed',refresh);window.addEventListener('mq-auth',()=>{qualification=null;refresh()});window.addEventListener('storage',e=>{if(e.key==='mq-battle-records-v1')refresh()});
 refresh();
 })();
+

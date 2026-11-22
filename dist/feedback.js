@@ -63,7 +63,7 @@
     "Tu sesión cambió. Recarga la página e inténtalo de nuevo."
   ]
 };
-  const t = index => (copy[window.MQI18n?.language] || copy.zh)[index];
+  const t = index => ['fr','de','it','ar'].includes(window.MQI18n?.language) ? window.MQI18n.t(copy.zh[index]) : (copy[window.MQI18n?.language] || copy.zh)[index];
   const api = 'https://tablegame.jujuli.com.cn/api/chess/feedback';
   const guestKey = 'mq-feedback-guest-v1';
   const receiptKey = 'mq-feedback-receipt-v1:';
@@ -165,7 +165,7 @@
   function render() {
     entry.querySelector('strong').textContent = heading.textContent = t(0);
     const language = window.MQI18n?.language;
-    back.textContent = language === 'en' ? '← Settings' : language === 'es' ? '← Ajustes' : '← 返回设置';
+    back.textContent = ['fr','de','it','ar'].includes(language) ? window.MQI18n.t('← 返回设置') : language === 'en' ? '← Settings' : language === 'es' ? '← Ajustes' : '← 返回设置';
     for (const element of section.querySelectorAll('[data-copy]')) element.textContent = t(Number(element.dataset.copy));
     input.placeholder = t(8);
     submit.textContent = t(busy ? 10 : 9);
@@ -251,3 +251,4 @@
   window.MQRecords?.ready.then(sync);
   render();
 })();
+

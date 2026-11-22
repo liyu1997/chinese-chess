@@ -1,7 +1,7 @@
 /* Display-only localization. Game state, notation and account data stay canonical. */
 (()=>{
 'use strict';
-const KEY='miaoqi-language',supported=['zh-CN','en','es'];
+const KEY='miaoqi-language',supported=['zh-CN','en','es','fr','de','it','ar'];
 // A browser-local installation ID, never a hardware ID or an account identifier.
 // It stays on this device and is not sent to the API or analytics.
 const DEVICE_ID_KEY='miaoqi-device-id-v1',DEVICE_LANGUAGE_PREFIX='miaoqi-device-language-v1:';
@@ -287,7 +287,61 @@ function spanish(value){
  }
  return text;
 }
-function localized(value){return language==='es'?spanish(value):english(value)}
+const extraLanguages=['fr','de','it','ar'];
+const extraPieces={fr:['Général','Conseiller','Éléphant','Cavalier','Char','Canon','Soldat'],de:['General','Berater','Elefant','Pferd','Wagen','Kanone','Soldat'],it:['Generale','Consigliere','Elefante','Cavallo','Carro','Cannone','Soldato'],ar:['الجنرال','المستشار','الفيل','الحصان','العربة','المدفع','الجندي']};
+const glyphTypes={'帅':0,'帥':0,'将':0,'將':0,'仕':1,'士':1,'相':2,'象':2,'马':3,'馬':3,'车':4,'車':4,'炮':5,'砲':5,'兵':6,'卒':6};
+const extraPartCache=new Map();
+function extraTranslate(value,locale=language){
+ const dict=window.MQLocales?.[locale],formats=window.MQLocaleFormats?.[locale];
+ if(!dict||!formats)return value;
+ if(Object.hasOwn(dict,value))return dict[value];
+ const f=(id,...args)=>formats[id].replace(/\{(\d+)\}/g,(_,i)=>String(args[Number(i)]??''));
+ const side=s=>dict[s==='红'||s==='红方'?'红方':'黑方'];
+ const lower=s=>locale==='ar'||locale==='de'?s:s.toLocaleLowerCase(locale);
+ const code=s=>locale==='ar'?'\u2068'+s+'\u2069':s;
+ let text=value;
+ text=text.replace(/^(红方|黑方)确认认输？$/,(_,s)=>f('resign',lower(side(s))))
+ .replace(/^第\s*(\d+)\s*回合$/,(_,n)=>f('turn',n))
+ .replace(/^已完成 (\d+) \/ (\d+) 课$/,(_,a,b)=>f('completed',a,b))
+ .replace(/^第 (\d+) 课 · 约 (\d+) 分钟$/,(_,a,b)=>f('lesson',a,b))
+ .replace(/^山隐正在凝思（最多约([\d.]+)秒）…$/,(_,n)=>f('thinking',locale==='ar'?n:n.replace('.',',')))
+ .replace(/^高清棋子加载中 · (\d+)\/(\d+)$/,(_,a,b)=>f('loadingPieces',a,b))
+ .replace(/^(\d+)分钟$/,(_,n)=>f('minutes',n))
+ .replace(/^房间 ([A-F0-9]{8})$/,(_,n)=>f('room',code(n)))
+ .replace(/^房间 ([A-F0-9]{8}) · 你执(红|黑)$/,(_,n,s)=>f('roomSide',code(n),lower(side(s))))
+ .replace(/^(红方|黑方)已连续将军 (\d+) 回合，请变换走法，勿反复长将。$/,(_,s,n)=>f('checks',lower(side(s)),n))
+ .replace(/^(红方|黑方)已连续 (\d+) 回合将军，不能一直用相同的步骤进行长将，请变换走法。$/,(_,s,n)=>f('checks',lower(side(s)),n))
+ .replace(/^(红方|黑方)用时耗尽，超时判负$/,(_,s)=>f('timeout',lower(side(s))))
+ .replace(/^胜率 (\d+)%$/,(_,n)=>f('winRate',n))
+ .replace(/联机 · 每方 (\d+) 分钟/g,(_,n)=>f('onlineTime',n))
+ .replace(/^距「(.+)」还需 (\d+) 分$/,(_,title,n)=>f('pointsTo',n,dict[title]||title))
+ .replace(/^(.+)段$/,(_,rank)=>dict[rank]?f('rank',dict[rank]):rank+'段')
+ .replace(/^(\d+)分起$/,(_,n)=>f('fromPoints',n))
+ .replace(/^正在逐步分析… (\d+) \/ (\d+)$/,(_,a,b)=>f('analyzing',a,b))
+ .replace(/^(红|黑)([帅帥将將车車马馬炮砲兵卒相象仕士]) (\d+)列(\d+)行$/,(_,s,p,x,y)=>f('pieceAt',side(s),extraPieces[locale][glyphTypes[p]],x,y))
+ .replace(/^空位 (\d+)列(\d+)行$/,(_,x,y)=>f('emptyAt',x,y))
+ .replace(/^落子至 (\d+)列(\d+)行$/,(_,x,y)=>f('moveTo',x,y))
+ .replace(/(\d+)列(\d+)行/g,(_,x,y)=>f('coordinate',x,y))
+ .replace(/^第(\d+)步 · /,(_,n)=>f('moveNumber',n))
+ .replace(/^已晋级 (\d+) \/ 4 轮$/,(_,n)=>f('advanced',n))
+ .replace(/^开局最多约 (\d+) 秒 · 复杂局面最多约 (\d+) 秒$/,(_,a,b)=>f('budgets',a,b))
+ .replace(/^(\d+) 人 · /,(_,n)=>f('players',n))
+ .replace(/^第 (\d+) 场$/,(_,n)=>f('match',n))
+ .replace(/^(.+)，本届冠军。$/,(_,name)=>f('champion',name))
+ .replace(/^你取得 (\d+) 场胜利。下一次相逢，再向冠军发起挑战。$/,(_,n)=>f('wins',n))
+ .replace(/ · 和棋 (\d+) 次，本轮重赛$/,(_,n)=>f('draws',n))
+ .replace(/^恭喜晋级(.+)！下一位对手已就位。$/,(_,round)=>f('advance',dict[round]||round))
+ .replace(/^本次大师赛止步于(.+)，下次再战。$/,(_,round)=>f('eliminated',dict[round]||round));
+ if(!/[\u3400-\u9fff]/.test(text))return text;
+ if(text.includes(' · ')||/^Level \d+/.test(text)||text.startsWith('已切换为')||/^(红方|黑方|移至|当前正在被将军；|已选择|这步可以走)/.test(text)||text.startsWith('下一步：')||text.startsWith('轮到你：')){
+  text=text.replace(/^下一步：/,f('next')).replace(/^轮到你：/,f('yourTurn'));
+  let parts=extraPartCache.get(locale);if(!parts){parts=Object.keys(dict).filter(k=>k.length>1).sort((a,b)=>b.length-a.length);extraPartCache.set(locale,parts)}
+  for(const k of parts)text=text.split(k).join(dict[k]);
+  text=text.replace(/^已切换为/,f('selected')).replace(/(\d+) 回合/g,(_,n)=>f('turns',n)).replace(/^Level (\d+)/,(_,n)=>f('level',n)).replace(/段$/, '');
+ }
+ return text;
+}
+function localized(value){return extraLanguages.includes(language)?extraTranslate(value):language==='es'?spanish(value):english(value)}
 const originals=new WeakMap(),attributes=new WeakMap();
 const excluded='script,style,textarea,[data-no-i18n],.piece-fallback,.piece-artwork,.initial-piece,#avatarLetter,.prep-name,.mq-code-preview,.invite-link,#history';
 function skip(el){return !el||!!el.closest(excluded)}
@@ -332,22 +386,54 @@ const observer=new MutationObserver(records=>{
 });
 function observe(){observer.observe(document.body,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['aria-label','title','placeholder','alt']})}
 const chineseTitle=document.title;
-function setLanguage(value,persist=true){
+function applyLanguage(value,persist=true){
  if(!supported.includes(value))return;
  language=value;if(persist)saveDeviceLanguage(value);
- observer.disconnect();document.documentElement.lang=value;document.body.dataset.language=value;
+ observer.disconnect();document.documentElement.lang=value;document.documentElement.dir=value==='ar'?'rtl':'ltr';document.body.dataset.language=value;
  document.title=value==='zh-CN'?chineseTitle:localized(chineseTitle);
  translate(document.body);
  const select=document.getElementById('languageSetting');if(select)select.value=value;
  observe();window.dispatchEvent(new CustomEvent('mq-language',{detail:{language:value}}));
 }
+// New language packs are requested only when selected or restored on this device.
+const loadingPacks=new Map();let languageRequest=0,pendingLanguage=null;
+let appliedLanguage=extraLanguages.includes(language)?'zh-CN':language;
+function loadLanguagePack(value){
+ if(window.MQLocales?.[value]&&window.MQLocaleFormats?.[value])return Promise.resolve();
+ if(loadingPacks.has(value))return loadingPacks.get(value);
+ const pending=new Promise((resolve,reject)=>{
+  const script=document.createElement('script');let done=false,timer;
+  const finish=error=>{if(done)return;done=true;clearTimeout(timer);script.onload=script.onerror=null;if(error){script.remove();reject(error)}else resolve()};
+  script.src='./i18n-'+value+'.js?v=four-languages-20261122';script.async=true;
+  script.onload=()=>finish(window.MQLocales?.[value]&&window.MQLocaleFormats?.[value]?null:new Error('Incomplete locale'));
+  script.onerror=()=>finish(new Error('Locale load failed'));
+  timer=setTimeout(()=>finish(new Error('Locale load timed out')),12000);
+  document.head.append(script);
+ }).finally(()=>loadingPacks.delete(value));
+ loadingPacks.set(value,pending);return pending;
+}
+function setLanguage(value,persist=true){
+ if(!supported.includes(value))return false;
+ const request=++languageRequest,select=document.getElementById('languageSetting');
+ const finish=()=>{if(request!==languageRequest)return false;pendingLanguage=null;select?.removeAttribute('aria-busy');window.MQLoading?.hide('language');applyLanguage(value,persist);appliedLanguage=value;return true};
+ if(!extraLanguages.includes(value)||window.MQLocales?.[value]&&window.MQLocaleFormats?.[value])return finish();
+ pendingLanguage=value;select?.setAttribute('aria-busy','true');
+ window.MQLoading?.show('language',window.MQLocaleFormats?.[appliedLanguage]?.loadingLanguage||({'zh-CN':'正在加载语言…',en:'Loading language…',es:'Cargando idioma…'}[appliedLanguage]));
+ return loadLanguagePack(value).then(finish).catch(()=>{
+  if(request!==languageRequest)return false;
+  pendingLanguage=null;language=appliedLanguage;select?.removeAttribute('aria-busy');if(select)select.value=appliedLanguage;window.MQLoading?.hide('language');
+  const error=window.MQLocaleFormats?.[appliedLanguage]?.loadError||({'zh-CN':'语言加载失败，请重试',en:'Language could not load. Please retry.',es:'No se pudo cargar el idioma. Inténtalo de nuevo.'}[appliedLanguage]);
+  if(typeof window.toast==='function')window.toast(error);return false;
+ });
+}
 window.MQI18n={get language(){return language},t:value=>language==='zh-CN'?String(value):localized(String(value)),setLanguage,translate,source:el=>Array.from(el.childNodes,n=>n.nodeType===3?(originals.get(n)?.source??n.nodeValue):n.textContent).join('')};
-function restoreDeviceLanguage(){const saved=readDeviceLanguage();if(saved)setLanguage(saved,false)}
+function restoreDeviceLanguage(){if(pendingLanguage)return;const saved=readDeviceLanguage();if(saved)setLanguage(saved,false)}
 // Signing in or out must keep this device's preference, regardless of account.
 window.addEventListener('mq-auth',restoreDeviceLanguage);
 window.addEventListener('storage',event=>{if(event.key===deviceLanguageKey||event.key===null)restoreDeviceLanguage()});
 function init(){document.getElementById('languageSetting')?.addEventListener('change',e=>setLanguage(e.target.value));setLanguage(language,false)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
+
 
 
