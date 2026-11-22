@@ -629,3 +629,27 @@ body[data-skin="comic11"] #resultDialog{background:#fff;border:2px solid #53545e
   width:100%;
  }
 }
+
+
+/* Homepage language selection: native options remain accessible in every locale. */
+.home-header .home-language{display:inline-flex;align-items:center;gap:4px;flex-shrink:0;padding:3px 7px;border:1px solid #d9cdb8;border-radius:12px;background:#fffaf2;color:inherit;letter-spacing:0}
+.home-language>svg{width:16px;height:16px;flex:0 0 16px;pointer-events:none}
+.home-language select{width:84px;min-height:36px;padding:4px 0;border:0;border-radius:8px;background:transparent;font:12px/1.4 "Microsoft YaHei",system-ui,sans-serif;letter-spacing:0}
+.home-language:focus-within{outline:2px solid var(--red);outline-offset:3px}
+.home-language select:focus-visible{outline:0}
+@media(max-width:520px){
+ .home-header .header-right{gap:6px;flex-shrink:0;letter-spacing:0}
+ .home-header .home-language{padding:2px 5px;gap:3px}
+ .home-language select{width:72px;font-size:11px}
+ .home-header .brand{gap:8px;min-width:0}
+ .home-header .brand-name{font-size:18px;letter-spacing:0;min-width:0}
+ .home-header .brand small{letter-spacing:0}
+ .home-header .mq-record-entry{font-size:0;padding:8px 3px}
+ .home-header .mq-record-entry svg{width:18px;height:18px;margin-right:0}
+}
+@media(max-width:360px){
+ .home-header .brand-logo{width:36px;height:36px}
+ .home-header .brand-name{font-size:15px}
+ .home-header .home-language>svg{display:none}
+ .home-language select{width:70px}
+}

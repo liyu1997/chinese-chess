@@ -1,12 +1,12 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm');
 const code=fs.readFileSync(__dirname+'/../dist/i18n.js','utf8');
-function setup(saved,blocked=false){
- const storage=new Map(saved?[['miaoqi-language',saved]]:[]),nodes=[];
+function setup(saved,blocked=false,existingStorage=null){
+ const storage=existingStorage||new Map(saved?[['miaoqi-language',saved]]:[]),nodes=[],events=new Map();
  const body={nodeType:1,dataset:{},closest:()=>null,hasAttribute:()=>false,querySelectorAll:()=>[]};
  const document={title:'妙棋手 · 来一局轻松的中国象棋',readyState:'loading',body,documentElement:{},addEventListener(){},getElementById(){return null},createTreeWalker(){let i=0;return {nextNode:()=>nodes[i++]||null}}};
- const context={document,window:{dispatchEvent(){}},localStorage:{getItem(k){if(blocked)throw Error('blocked');return storage.get(k)},setItem(k,v){if(blocked)throw Error('blocked');storage.set(k,v)}},MutationObserver:class{observe(){}disconnect(){}},CustomEvent:class{},NodeFilter:{SHOW_TEXT:4}};
+ const context={document,window:{addEventListener(type,listener){events.set(type,listener)},dispatchEvent(event){events.get(event.type)?.(event)}},localStorage:{getItem(k){if(blocked)throw Error('blocked');return storage.get(k)},setItem(k,v){if(blocked)throw Error('blocked');storage.set(k,v)}},MutationObserver:class{observe(){}disconnect(){}},CustomEvent:class{constructor(type,options){this.type=type;this.detail=options?.detail}},NodeFilter:{SHOW_TEXT:4}};
  vm.runInNewContext(fs.readFileSync(__dirname+'/../dist/i18n-es.js','utf8'),context);
- vm.runInNewContext(code,context);return {i18n:context.window.MQI18n,document,storage,nodes,spanish:context.window.MQSpanish};
+ vm.runInNewContext(code,context);return {i18n:context.window.MQI18n,document,storage,nodes,spanish:context.window.MQSpanish,emit:event=>context.window.dispatchEvent(event)};
 }
 const a=setup();assert.equal(a.i18n.language,'zh-CN');
 const parent={closest:()=>null},text={nodeType:3,parentElement:parent,nodeValue:'  开启新局  '};a.nodes.push(text);
@@ -50,4 +50,33 @@ a.i18n.setLanguage('zh-CN');assert.equal(text.nodeValue,'将军！请先解将')
 assert.equal(setup('es').i18n.language,'es');
 b.i18n.setLanguage('es');assert.equal(b.i18n.t('悔棋'),'Deshacer');
 console.log('Spanish: all 609 messages, all 16 courses, dynamic counters, coordinates, three-way switching and persistence passed.');
+// The homepage control replaces the settings-only entry without duplicate IDs.
+const html=fs.readFileSync(__dirname+'/../dist/index.html','utf8');
+assert.equal((html.match(/id="languageSetting"/g)||[]).length,1);
+assert.ok(/<header[^>]*>[\s\S]*class="home-language"[\s\S]*id="languageSetting"[\s\S]*<\/header>/.test(html));
+assert.ok(!/<label class="preference-row language-preference"/.test(html));
+const first=setup('es'),id=first.storage.get('miaoqi-device-id-v1');
+assert.ok(id);const deviceKey='miaoqi-device-language-v1:'+id;
+assert.equal(first.storage.get(deviceKey),'es'); // migrates an existing choice
+first.i18n.setLanguage('en');assert.equal(first.storage.get(deviceKey),'en');
+const reopened=setup(null,false,first.storage);
+assert.equal(reopened.storage.get('miaoqi-device-id-v1'),id);
+assert.equal(reopened.i18n.language,'en'); // reopen on the same installation
+reopened.i18n.setLanguage('es',false);
+reopened.emit({type:'mq-auth',detail:{user:{id:'account-a'}}});
+assert.equal(reopened.i18n.language,'en'); // login restores this device
+reopened.i18n.setLanguage('es');
+reopened.emit({type:'mq-auth',detail:{user:null}});
+assert.equal(reopened.i18n.language,'es'); // logout keeps the choice
+reopened.emit({type:'mq-auth',detail:{user:{id:'account-b'}}});
+assert.equal(reopened.i18n.language,'es'); // account changes keep device default
+const other=setup();assert.notEqual(other.storage.get('miaoqi-device-id-v1'),id);
+assert.equal(other.i18n.language,'zh-CN'); // another device is independent
+const priority=new Map([['miaoqi-device-id-v1',id],[deviceKey,'es'],['miaoqi-language','en']]);
+assert.equal(setup(null,false,priority).i18n.language,'es');
+priority.set(deviceKey,'invalid');assert.equal(setup(null,false,priority).i18n.language,'en');
+first.storage.set(deviceKey,'zh-CN');reopened.emit({type:'storage',key:deviceKey});
+assert.equal(reopened.i18n.language,'zh-CN'); // other tabs sync this device
+console.log('Homepage entry, device-ID migration, separate devices, reopen, login/logout, invalid preferences and tab synchronization passed.');
+
 

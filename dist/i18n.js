@@ -2,7 +2,29 @@
 (()=>{
 'use strict';
 const KEY='miaoqi-language',supported=['zh-CN','en','es'];
-let language='zh-CN';try{const saved=localStorage.getItem(KEY);if(supported.includes(saved))language=saved}catch{}
+// A browser-local installation ID, never a hardware ID or an account identifier.
+// It stays on this device and is not sent to the API or analytics.
+const DEVICE_ID_KEY='miaoqi-device-id-v1',DEVICE_LANGUAGE_PREFIX='miaoqi-device-language-v1:';
+let deviceId=null;
+try{
+ const savedId=localStorage.getItem(DEVICE_ID_KEY);
+ deviceId=/^[a-zA-Z0-9-]{8,100}$/.test(savedId||'')?savedId:
+  (globalThis.crypto?.randomUUID?.()||('device-'+Date.now().toString(36)+'-'+Math.random().toString(36).slice(2)));
+ if(deviceId!==savedId)localStorage.setItem(DEVICE_ID_KEY,deviceId);
+}catch{deviceId=null}
+const deviceLanguageKey=deviceId?DEVICE_LANGUAGE_PREFIX+deviceId:null;
+function readDeviceLanguage(){
+ try{const saved=deviceLanguageKey&&localStorage.getItem(deviceLanguageKey);if(supported.includes(saved))return saved}catch{}
+ try{const legacy=localStorage.getItem(KEY);if(supported.includes(legacy))return legacy}catch{}
+ return null;
+}
+function saveDeviceLanguage(value){
+ // Retain the legacy key so existing installations migrate without losing a choice.
+ if(deviceLanguageKey)try{localStorage.setItem(deviceLanguageKey,value)}catch{}
+ try{localStorage.setItem(KEY,value)}catch{}
+}
+let language=readDeviceLanguage()||'zh-CN';
+if(deviceLanguageKey)try{if(!supported.includes(localStorage.getItem(deviceLanguageKey)))localStorage.setItem(deviceLanguageKey,language)}catch{}
 const en={
 '语言':'Language','界面语言':'Language','选择你习惯使用的语言':'Choose your preferred language',
 '妙棋手 · 来一局轻松的中国象棋':'Miaoqishou · Enjoy a game of Xiangqi','中国象棋':'Chinese Chess','妙棋手':'Miaoqishou',
@@ -312,7 +334,7 @@ function observe(){observer.observe(document.body,{subtree:true,childList:true,c
 const chineseTitle=document.title;
 function setLanguage(value,persist=true){
  if(!supported.includes(value))return;
- language=value;if(persist)try{localStorage.setItem(KEY,value)}catch{}
+ language=value;if(persist)saveDeviceLanguage(value);
  observer.disconnect();document.documentElement.lang=value;document.body.dataset.language=value;
  document.title=value==='zh-CN'?chineseTitle:localized(chineseTitle);
  translate(document.body);
@@ -320,7 +342,12 @@ function setLanguage(value,persist=true){
  observe();window.dispatchEvent(new CustomEvent('mq-language',{detail:{language:value}}));
 }
 window.MQI18n={get language(){return language},t:value=>language==='zh-CN'?String(value):localized(String(value)),setLanguage,translate,source:el=>Array.from(el.childNodes,n=>n.nodeType===3?(originals.get(n)?.source??n.nodeValue):n.textContent).join('')};
+function restoreDeviceLanguage(){const saved=readDeviceLanguage();if(saved)setLanguage(saved,false)}
+// Signing in or out must keep this device's preference, regardless of account.
+window.addEventListener('mq-auth',restoreDeviceLanguage);
+window.addEventListener('storage',event=>{if(event.key===deviceLanguageKey||event.key===null)restoreDeviceLanguage()});
 function init(){document.getElementById('languageSetting')?.addEventListener('change',e=>setLanguage(e.target.value));setLanguage(language,false)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
+
 
